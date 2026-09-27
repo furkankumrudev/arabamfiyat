@@ -21,6 +21,7 @@ from src.maintenance.pipeline import (
     StepResult,
     ensure_run_table,
     last_success_at,
+    main,
     record_step,
     run_step,
 )
@@ -31,6 +32,14 @@ def _result(step: str, status: str, finished_at: str) -> StepResult:
     return StepResult(
         step=step, status=status, started_at=finished_at, finished_at=finished_at, detail="test"
     )
+
+
+class PipelineEntryPointTests(unittest.TestCase):
+    def test_missing_database_is_reported_instead_of_created(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "runtime" / "vehicle_listings.sqlite3"
+            self.assertEqual(main(["--db-path", str(db_path)]), 1)
+            self.assertFalse(db_path.exists())
 
 
 class PipelineRunLogTests(unittest.TestCase):

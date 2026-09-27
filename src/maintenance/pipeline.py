@@ -200,7 +200,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    results = run_pipeline(args.db_path, args.catalog_path, args.date)
+    db_path = args.db_path or sqlite_db_path()
+    if not db_path.exists():
+        # Creating an empty database here would only hide that ingestion never ran.
+        print(f"Veritabani bulunamadi: {db_path}. Once ilan verisini aktarin (README: veri alma adimlari).")
+        return 1
+    results = run_pipeline(db_path, args.catalog_path, args.date)
     for result in results:
         print(f"{result.step}={result.status} {result.detail}")
     return 0 if all(result.succeeded for result in results) else 1
