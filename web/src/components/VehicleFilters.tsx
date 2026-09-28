@@ -51,11 +51,13 @@ export function VehicleFilters({ value, onApply, autoApply = false, showRangeFil
     if (draft.brand && draft.series) api.models(draft.brand, draft.series).then((result) => setModels(result.items)).catch(() => setModels([]));
   }, [draft.brand, draft.series]);
 
-  const updateDraft = (update: (current: Filters) => Filters) => setDraft((current) => {
-    const updated = update(current);
+  // Notify the parent outside the state updater: updaters run during render,
+  // where updating another component's state is not allowed.
+  const updateDraft = (update: (current: Filters) => Filters) => {
+    const updated = update(draft);
+    setDraft(updated);
     if (autoApply) onApply(updated);
-    return updated;
-  });
+  };
 
   const change = (key: keyof Filters, next: string) => updateDraft((current) => {
     const updated = { ...current, [key]: next || undefined };
