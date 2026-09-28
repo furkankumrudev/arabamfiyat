@@ -20,6 +20,7 @@ flowchart LR
 | --- | --- | --- |
 | Veri kaynakları | `src/ingestion/sources/` | Demo ve CSV kaynakları; hepsi aynı `ListingSource` arayüzünü uygular |
 | Veri yükleme | `src/ingestion/load_listings.py` | Kaynağı ham tabloya yazar, demo ile gerçek veriyi karıştırmaz, hattı çalıştırır |
+| Kasko referansı | `src/api/services/reference_service.py` | Değerlemedeki araca TSB kasko değerini eşleştirir |
 | Web arayüzü | `web/` | Kullanıcıdan araç bilgilerini almak ve piyasa sonucunu görselleştirmek |
 | API | `src/api/` | Tip güvenli endpointler, veri erişimi ve servis koordinasyonu |
 | Piyasa motoru | `src/analysis/market_engine.py` | Benzerlik puanlama, uç fiyat temizleme ve fiyat aralığı |

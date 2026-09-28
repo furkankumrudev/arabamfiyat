@@ -35,6 +35,12 @@ Yayımlanan dosyanın başlıkları bunlardan farklıysa aktarım **sessizce yan
     --column reference_value="Kasko Bedeli (TL)"
 ```
 
+## Uygulamada nerede görünür
+
+Değerleme sonucunda "TSB kasko değeri" kartı olarak (`src/api/services/reference_service.py`). Eşleştirme: marka aynı olmalı ve serinin kelimeleri listedeki tip adında geçmeli ("3 Serisi" gibi rakamlı seriler "320i" gibi model kodlarıyla eşleşir). Paketin kelimeleri de geçiyorsa o paketin değeri, geçmiyorsa serinin o yıldaki medyanı kullanılır. En son aktarılan dönem esas alınır.
+
+Eşleştirme kuralları gerçek bir TSB dosyasıyla henüz doğrulanmadı. İlk gerçek listeyi aktardıktan sonra birkaç aracın sonucunu listeyle elle karşılaştırın.
+
 ## Önemli
 
 Bu değerler **sigorta referans değeridir, ilan satış fiyatı değildir.** Ayrı bir tabloda (`reference_vehicle_values`) tutulur ve ilan tablolarıyla karıştırılmaz.

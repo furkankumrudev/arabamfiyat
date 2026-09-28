@@ -143,6 +143,18 @@ export type ValuationResponse = {
   reference_listing_trend: TrendPoint[];
   condition_adjustment_percent: number | null;
   condition_adjustment_note: string | null;
+  reference_value: ReferenceValue | null;
+};
+
+export type ReferenceValue = {
+  value: number;
+  period: string;
+  source: string;
+  model_year: number;
+  match: "model" | "series";
+  matched_name: string | null;
+  candidate_count: number;
+  market_to_reference_percent: number | null;
 };
 
 export type HealthResponse = {

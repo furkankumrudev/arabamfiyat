@@ -1,4 +1,4 @@
-import { AlertTriangle, BadgePercent, CalendarRange, Gauge, Sparkles } from "lucide-react";
+import { AlertTriangle, BadgePercent, CalendarRange, Gauge, ShieldCheck, Sparkles } from "lucide-react";
 import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
 import type { ReferenceMileagePoint, ReferencePricePoint, TrendPoint, ValuationResponse } from "../types";
 import { money, number, percent } from "../utils/format";
@@ -8,6 +8,30 @@ function ConditionAdjustmentCard({ data }: { data: ValuationResponse }) {
   if (data.condition_adjustment_percent == null) return null;
   const unchanged = data.condition_adjustment_percent === 0;
   return <div className="condition-adjustment-card"><div><span className="eyebrow"><BadgePercent size={14} />DURUM ETKİSİ</span><strong>{unchanged ? "Referans durum" : percent(data.condition_adjustment_percent)}</strong></div><p>{data.condition_adjustment_note}</p></div>;
+}
+
+const MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+const formatPeriod = (period: string) => {
+  const [year, month] = period.split("-").map(Number);
+  return month ? `${MONTHS[month - 1]} ${year}` : period;
+};
+
+function ReferenceValueCard({ data }: { data: ValuationResponse }) {
+  const reference = data.reference_value;
+  if (!reference) return null;
+  const demo = reference.source === "demo";
+  const ratio = reference.market_to_reference_percent;
+  const matchText = reference.match === "model"
+    ? `Paket eşleşmesi: ${reference.matched_name}`
+    : `Paket eşleşmedi; serinin ${reference.model_year} model ${number(reference.candidate_count)} paketinin medyanı`;
+  return <div className="reference-value-card">
+    <div>
+      <span className="eyebrow"><ShieldCheck size={14} />{demo ? "DEMO KASKO DEĞERİ" : "TSB KASKO DEĞERİ"} · {formatPeriod(reference.period)}</span>
+      <strong>{money(reference.value)}</strong>
+    </div>
+    <p>{matchText}.{ratio != null && <> İlan piyasası bu değerin <b>%{Math.round(ratio)}</b> seviyesinde.</>}</p>
+    <small>{demo ? "Sentetik demo listesinden üretildi. " : ""}Sigorta referans değeridir; ilan veya satış fiyatı değildir.</small>
+  </div>;
 }
 
 function ComparisonSummary({ data }: { data: ValuationResponse }) {
@@ -177,7 +201,8 @@ function ReferenceInsights({ data }: { data: ValuationResponse }) {
 
 export function ValuationResult({ data }: { data: ValuationResponse | null }) {
   if (!data) return <div className="valuation-placeholder"><Sparkles size={26} /><strong>Aracınızın piyasa değerini hesaplayın</strong><p>Seçtiğiniz kriterlerle eşleşen gerçek ilanlardan bir tahmin oluşturacağız.</p></div>;
-  if (data.status === "empty") return <EmptyState title="Güncel piyasa karşılaştırması oluşmadı" detail={data.explanation} />;
+  // Without comparable listings the kasko value is still a useful anchor.
+  if (data.status === "empty") return <><EmptyState title="Güncel piyasa karşılaştırması oluşmadı" detail={data.explanation} />{data.reference_value && <div className="valuation-result"><ReferenceValueCard data={data} /></div>}</>;
   // The engine reports "low_sample" when the reference group is below its own
   // minimum. Showing that estimate at full visual weight would contradict the
   // warning printed underneath it, so the range leads instead.
@@ -194,6 +219,7 @@ export function ValuationResult({ data }: { data: ValuationResponse | null }) {
     </div>
     <MarketRangeCard data={data} />
     <ConditionAdjustmentCard data={data} />
+    <ReferenceValueCard data={data} />
     <ComparisonSummary data={data} />
     <PriceDistribution data={data} />
     <ReferenceInsights data={data} />

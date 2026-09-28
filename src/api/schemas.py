@@ -174,6 +174,20 @@ class ValuationRequest(BaseModel):
     painted_parts: int | None = Field(default=None, ge=0, le=30)
 
 
+class ReferenceValue(BaseModel):
+    """TSB kasko reference value: an insurance figure, not an asking price."""
+
+    value: float
+    period: str
+    source: str
+    model_year: int
+    # "model": the package matched; "series": median of the series for that year.
+    match: str
+    matched_name: str | None = None
+    candidate_count: int
+    market_to_reference_percent: float | None = None
+
+
 class ValuationResponse(BaseModel):
     status: str
     estimated_market_value: float | None = None
@@ -192,6 +206,7 @@ class ValuationResponse(BaseModel):
     reference_listing_trend: list[TrendPoint] = Field(default_factory=list)
     condition_adjustment_percent: float | None = None
     condition_adjustment_note: str | None = None
+    reference_value: ReferenceValue | None = None
 
 
 class SimilarListingsResponse(BaseModel):

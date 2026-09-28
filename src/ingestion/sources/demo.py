@@ -227,6 +227,24 @@ def _title(rng: random.Random, series: DemoSeries, trim: DemoTrim, year: int, pa
     return base
 
 
+def demo_reference_values(reference_date: date) -> list[tuple[str, str, int, float]]:
+    """A synthetic kasko list for the demo: (brand, tip, model year, value).
+
+    It follows the same price model as the demo listings without their noise,
+    written the way the published list names vehicles.
+    """
+    rows = []
+    for series in DEMO_SERIES:
+        for trim in series.trims:
+            for year in range(trim.first_year, min(trim.last_year, reference_date.year) + 1):
+                value = series.new_price * trim.price_factor * _depreciation(reference_date.year - year) * 1.03
+                # Lists name BMW-style series by the model code alone ("320i M Sport").
+                prefix = "" if series.series.endswith("Serisi") else f"{series.series} "
+                tip = f"{prefix}{trim.package}".upper()
+                rows.append((series.brand.upper(), tip, year, float(round(value, -3))))
+    return rows
+
+
 class DemoSource:
     """Deterministic synthetic listings for demos, screenshots and tests."""
 

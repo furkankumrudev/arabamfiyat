@@ -197,6 +197,10 @@ kaynak (demo | CSV | ileride partner API)  ->  vehicle_listings  ->  temizleme  
 | CSV dosyası | `scripts/import_listings <dosya.csv>` | Kullanım izni olan her veri: partner dışa aktarımı, lisanslı veri seti, elle toplanan ilanlar |
 | TSB kasko değer listesi | `data/reference/kasko/` klasörü | Aylık resmi **sigorta referans değeri**; ilan fiyatıyla karıştırılmaz, ayrı tabloda tutulur |
 
+### Kasko değeri değerleme sonucunda
+
+Değerleme ekranı, ilan analizinin yanında aracın TSB kasko değerini de gösterir: paket listede eşleşirse o paketin değeri, eşleşmezse serinin o model yılındaki medyanı gelir ve hangisi olduğu yazılır. İlan piyasasının kasko değerine oranı da verilir. Benzer ilan bulunamadığında kasko değeri tek başına dayanak olarak gösterilir. Demo verisinde bu liste de sentetiktir ve "Demo kasko değeri" olarak etiketlenir.
+
 Yeni bir kaynak eklemek, `ListingSource` arayüzünü (`src/ingestion/sources/base.py`) uygulayan küçük bir sınıf yazmaktır.
 
 ### CSV ile kendi verini yüklemek

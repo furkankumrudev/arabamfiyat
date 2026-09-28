@@ -12,6 +12,7 @@ from src.analysis.market_engine import build_market_analysis
 from src.ml.predict_price_model import DEFAULT_MODEL_PATH, ConditionAdjustment, estimate_condition_adjustment
 
 from ..database import ListingRepository
+from ..services.reference_service import lookup_reference_value
 from ..services.trend_service import build_listing_trend, snapshot_changes, unavailable_changes
 
 MIN_RELATIONSHIP_SAMPLE = 3
@@ -361,6 +362,7 @@ def valuation(repository: ListingRepository, payload: dict[str, Any]) -> dict[st
         for key in ("brand", "series", "model", "year_min", "year_max", "mileage_max", "clean_only")
     }
     listings = repository.load_listings(filters)
+    reference = reference_value(repository, payload)
     result = build_market_analysis(
         listings, target_year=payload.get("year"), target_mileage=payload.get("mileage_km"),
         selected_model=payload.get("model"), user_price=payload.get("asking_price"),
@@ -377,6 +379,7 @@ def valuation(repository: ListingRepository, payload: dict[str, Any]) -> dict[st
         return {
             "status": "empty", "listing_count": 0,
             "explanation": detail,
+            "reference_value": reference,
         }
     condition_payload, fallback_note = enrich_condition_payload(payload, result["used_listings"])
     adjustment, adjustment_note = condition_adjustment_from_payload(condition_payload)
@@ -429,7 +432,24 @@ def valuation(repository: ListingRepository, payload: dict[str, Any]) -> dict[st
         "reference_listing_trend": reference_listing_trend,
         "condition_adjustment_percent": adjustment.percent if adjustment else None,
         "condition_adjustment_note": adjustment_note,
+        "reference_value": _with_market_ratio(reference, market_value),
     }
+
+
+def reference_value(repository: ListingRepository, payload: dict[str, Any]) -> dict[str, object] | None:
+    """The kasko reference value needs a model year; without one there is nothing to look up."""
+    if payload.get("year") is None:
+        return None
+    with closing(repository.connect()) as connection:
+        return lookup_reference_value(
+            connection, payload.get("brand"), payload.get("series"), payload.get("model"), payload.get("year"),
+        )
+
+
+def _with_market_ratio(reference: dict[str, object] | None, market_value: float) -> dict[str, object] | None:
+    if not reference or not reference.get("value"):
+        return reference
+    return {**reference, "market_to_reference_percent": market_value / float(reference["value"]) * 100}
 
 
 def serialize_listings(frame: pd.DataFrame, limit: int = 12) -> list[dict[str, object]]:

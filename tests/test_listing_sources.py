@@ -13,7 +13,12 @@ from fastapi.testclient import TestClient
 
 from src.api.database import ListingRepository
 from src.api.main import app
-from src.ingestion.load_listings import MixedSourcesError, backfill_demo_snapshots, load_source
+from src.ingestion.load_listings import (
+    MixedSourcesError,
+    backfill_demo_snapshots,
+    load_source,
+    write_demo_reference_values,
+)
 from src.ingestion.sources.csv_file import CsvFormatError, CsvSource, parse_integer
 from src.ingestion.sources.demo import DEMO_SERIES, DEMO_SOURCE, DemoConfig, DemoSource, turkish_date
 from src.maintenance.clean_vehicle_data import CATALOG_PATH
@@ -153,6 +158,7 @@ class DemoEndToEndTests(unittest.TestCase):
         cls.load = load_source(_demo(count=1500), cls.db_path)
         cls.steps = run_pipeline(cls.db_path, snapshot_date=REFERENCE_DATE, reference_inbox=Path(cls.temp_dir.name))
         cls.snapshots = backfill_demo_snapshots(cls.db_path, REFERENCE_DATE)
+        write_demo_reference_values(cls.db_path, REFERENCE_DATE)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -203,6 +209,9 @@ class DemoEndToEndTests(unittest.TestCase):
         body = response.json()
         self.assertGreater(body["listing_count"], 0)
         self.assertIsNotNone(body["estimated_market_value"])
+        # The kasko value shown with demo data must be labelled as demo.
+        self.assertEqual(body["reference_value"]["source"], DEMO_SOURCE)
+        self.assertGreater(body["reference_value"]["market_to_reference_percent"], 0)
 
 
 if __name__ == "__main__":

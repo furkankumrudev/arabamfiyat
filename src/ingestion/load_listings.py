@@ -11,9 +11,10 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sqlite3
 from contextlib import closing
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -23,8 +24,9 @@ from src.api.services.trend_service import parse_listing_date
 from src.api.settings import sqlite_db_path
 from src.ingestion.sources.base import ListingSource
 from src.ingestion.sources.csv_file import CsvFormatError, CsvSource
-from src.ingestion.sources.demo import DEMO_SOURCE, DemoConfig, DemoSource
+from src.ingestion.sources.demo import DEMO_SOURCE, DemoConfig, DemoSource, demo_reference_values
 from src.ingestion.storage import ListingStore
+from src.ingestion.tsb_reference import REFERENCE_TABLE, ensure_reference_table
 from src.maintenance.pipeline import run_pipeline
 from src.maintenance.save_market_snapshot import save_snapshot_frame
 
@@ -82,6 +84,27 @@ def backfill_demo_snapshots(db_path: Path, reference_date: date, weeks: int = DE
     return saved
 
 
+def write_demo_reference_values(db_path: Path, reference_date: date) -> int:
+    """Store the synthetic kasko list for the demo's month, labelled as demo."""
+    period = reference_date.strftime("%Y-%m")
+    loaded_at = datetime.now(UTC).isoformat()
+    rows = [
+        (DEMO_SOURCE, period, None, brand, tip, year, value, loaded_at)
+        for brand, tip, year, value in demo_reference_values(reference_date)
+    ]
+    with closing(sqlite3.connect(db_path)) as connection:
+        ensure_reference_table(connection)
+        connection.execute(f"DELETE FROM {REFERENCE_TABLE} WHERE source = ?", (DEMO_SOURCE,))
+        connection.executemany(
+            f"""INSERT INTO {REFERENCE_TABLE}
+                (source, period, vehicle_code, brand, model_name, model_year, reference_value, loaded_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            rows,
+        )
+        connection.commit()
+    return len(rows)
+
+
 def build_parser() -> argparse.ArgumentParser:
     # Shared options live on every subcommand so wrapper scripts can append them.
     common = argparse.ArgumentParser(add_help=False)
@@ -134,6 +157,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{step.step}={step.status} {step.detail}")
     if args.command == "demo":
         print(f"demo_snapshots={backfill_demo_snapshots(db_path, today)}")
+        print(f"demo_reference_values={write_demo_reference_values(db_path, today)}")
     return 0 if all(step.succeeded for step in steps) else 1
 
 
