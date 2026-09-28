@@ -44,7 +44,13 @@ def build_listing_trend(
     listings: pd.DataFrame,
     start_date: date | None = None,
     end_date: date | None = None,
+    interval: str = "day",
 ) -> list[dict[str, object]]:
+    """Median and mean asking price per listing day, or per week starting Monday.
+
+    Weekly points are computed from the listings themselves, not from daily
+    medians, so a week's median is a true median.
+    """
     if listings.empty or "listing_date" not in listings:
         return []
     frame = listings.copy()
@@ -56,6 +62,8 @@ def build_listing_trend(
         frame = frame[frame["date"] <= pd.Timestamp(end_date)]
     if frame.empty:
         return []
+    if interval == "week":
+        frame["date"] = frame["date"] - pd.to_timedelta(frame["date"].dt.weekday, unit="D")
     grouped = frame.groupby("date", as_index=False).agg(
         median_price=("price", "median"), average_price=("price", "mean"), listing_count=("price", "count")
     )

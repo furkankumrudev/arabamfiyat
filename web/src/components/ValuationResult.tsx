@@ -23,7 +23,7 @@ function ReferenceValueCard({ data }: { data: ValuationResponse }) {
   const ratio = reference.market_to_reference_percent;
   const matchText = reference.match === "model"
     ? `Paket eşleşmesi: ${reference.matched_name}`
-    : `Paket eşleşmedi; serinin ${reference.model_year} model ${number(reference.candidate_count)} paketinin medyanı`;
+    : `Serinin ${reference.model_year} model ${number(reference.candidate_count)} paketinin medyanı (paket bazında eşleşme yok)`;
   return <div className="reference-value-card">
     <div>
       <span className="eyebrow"><ShieldCheck size={14} />{demo ? "DEMO KASKO DEĞERİ" : "TSB KASKO DEĞERİ"} · {formatPeriod(reference.period)}</span>

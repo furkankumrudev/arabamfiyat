@@ -2,7 +2,7 @@ import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, X
 import { api } from "../api/client";
 import { useAsync } from "../hooks/useAsync";
 import type { Filters, PriceRelationshipPoint } from "../types";
-import { money, number } from "../utils/format";
+import { compactMoney, money, number } from "../utils/format";
 import { EmptyState, ErrorState, LoadingSkeleton } from "./StatePanels";
 import { ListingChartLegend } from "./ListingChartLegend";
 
@@ -21,7 +21,7 @@ function PriceTooltip({ points }: { points: ComparisonPoint[] }) {
 }
 
 function RelationshipLineChart({ points, showClean }: { points: ComparisonPoint[]; showClean: boolean }) {
-  return <div className="relationship-chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={points} margin={{ top: 12, right: 8, left: 8, bottom: 6 }}><CartesianGrid stroke="#e7edf5" strokeDasharray="3 4" /><XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={12} /><YAxis tickFormatter={(value) => `${number(value / 1_000_000)} Mn`} tickLine={false} axisLine={false} width={52} /><PriceTooltip points={points} /><Legend content={<ListingChartLegend showClean={showClean} />} /><Line type="monotone" dataKey="median_price" name="Tüm ilanlar" stroke="#2563eb" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} />{showClean && <Line type="monotone" dataKey="clean_median_price" name="Temiz araç ilanları" stroke="#16875b" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} connectNulls />}</LineChart></ResponsiveContainer></div>;
+  return <div className="relationship-chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={points} margin={{ top: 12, right: 8, left: 8, bottom: 6 }}><CartesianGrid stroke="#e7edf5" strokeDasharray="3 4" /><XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={12} /><YAxis tickFormatter={compactMoney} tickLine={false} axisLine={false} width={84} /><PriceTooltip points={points} /><Legend content={<ListingChartLegend showClean={showClean} />} /><Line type="monotone" dataKey="median_price" name="Tüm ilanlar" stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />{showClean && <Line type="monotone" dataKey="clean_median_price" name="Temiz araç ilanları" stroke="#16875b" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} connectNulls />}</LineChart></ResponsiveContainer></div>;
 }
 
 export function PriceRelationships({ filters }: { filters: Filters }) {

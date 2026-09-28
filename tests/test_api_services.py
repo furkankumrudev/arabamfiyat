@@ -61,6 +61,17 @@ class ApiServiceTests(unittest.TestCase):
         self.assertEqual(len(trend), 2)
         self.assertEqual(trend[0]["median_price"], 900000.0)
 
+    def test_weekly_trend_takes_the_median_of_the_weeks_listings(self) -> None:
+        # 28 Eylül 2026 is a Monday; the first three dates share its week.
+        frame = pd.DataFrame({
+            "listing_date": ["28 Eylül 2026", "29 Eylül 2026", "30 Eylül 2026", "5 Ekim 2026"],
+            "price": [100, 900, 1000, 500],
+        })
+        trend = build_listing_trend(frame, interval="week")
+        self.assertEqual([str(point["date"]) for point in trend], ["2026-09-28", "2026-10-05"])
+        self.assertEqual(trend[0]["median_price"], 900.0)
+        self.assertEqual(trend[0]["listing_count"], 3)
+
     def test_overview_and_empty_history_are_honest(self) -> None:
         overview = get_overview(MarketFilters(), self.repository)
         self.assertEqual(overview.listing_count, 2)

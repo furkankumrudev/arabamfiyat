@@ -29,7 +29,7 @@ export const api = {
   series: (brand: string) => get<CatalogResponse>("/api/catalog/series", { brand }),
   models: (brand: string, series: string) => get<CatalogResponse>("/api/catalog/models", { brand, series }),
   overview: (filters: Filters) => get<MarketOverview>("/api/market/overview", filters),
-  trend: (filters: Filters, start_date?: string, end_date?: string) => get<TrendResponse>("/api/market/trend", { ...filters, start_date, end_date }),
+  trend: (filters: Filters, start_date?: string, end_date?: string, interval: "day" | "week" = "week") => get<TrendResponse>("/api/market/trend", { ...filters, start_date, end_date, interval }),
   priceRelationships: (filters: Filters) => get<PriceRelationshipsResponse>("/api/market/price-relationships", filters),
   table: (filters: Filters, group_by: string) => get<MarketTableResponse>("/api/market/table", { ...filters, group_by }),
   movers: (direction: "up" | "down") => get<MoversResponse>("/api/market/movers", { direction }),

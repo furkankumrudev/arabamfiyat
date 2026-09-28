@@ -23,5 +23,11 @@ export default function App() {
     if (!target) { window.scrollTo({ top: 0, behavior: "smooth" }); return; }
     window.setTimeout(() => document.getElementById(target)?.scrollIntoView({ behavior: "smooth" }), 0);
   };
-  return <><AppHeader page={page} onNavigate={navigate} /><DataSourceBanner />{page === "valuation" ? <ValuationPage /> : <MarketTrendsPage />}<footer><div className="shell">ArabamFiyat.com <span>·</span> Veriye dayalı ikinci el araç piyasa analizi</div></footer></>;
+  useEffect(() => { document.title = page === "valuation" ? "Araç Değerleme | ArabamFiyat.com" : "Piyasa Trendleri | ArabamFiyat.com"; }, [page]);
+  const link = (path: string) => (event: React.MouseEvent) => { event.preventDefault(); navigate(path); };
+  return <><AppHeader page={page} onNavigate={navigate} /><DataSourceBanner />{page === "valuation" ? <ValuationPage /> : <MarketTrendsPage onNavigate={navigate} />}
+    <footer><div className="shell footer-grid">
+      <div><strong>ArabamFiyat.com</strong><p>Veriye dayalı ikinci el araç piyasa analizi. Sonuçlar ilan verisinden üretilen karar destek tahminleridir; ekspertiz veya satış garantisi değildir.</p></div>
+      <nav aria-label="Alt menü"><a href="/piyasa-trendleri" onClick={link("/piyasa-trendleri")}>Piyasa trendleri</a><a href="/arac-degerleme" onClick={link("/arac-degerleme")}>Araç değerleme</a><a href="/piyasa-trendleri#metodoloji" onClick={link("/piyasa-trendleri#metodoloji")}>Nasıl hesaplıyoruz?</a><a href="https://github.com/furkankumrudev/arabamfiyat" target="_blank" rel="noreferrer">GitHub</a></nav>
+    </div></footer></>;
 }

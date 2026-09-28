@@ -5,7 +5,7 @@ import type { Filters, ValuationRequest } from "../types";
 const formatNumberInput = (value: string) => value ? new Intl.NumberFormat("tr-TR").format(Number(value)) : "";
 const MAX_MODEL_YEAR = new Date().getFullYear() + 1;
 
-export function ValuationForm({ onSubmit }: { onSubmit: (payload: ValuationRequest) => void }) {
+export function ValuationForm({ onSubmit, loading = false }: { onSubmit: (payload: ValuationRequest) => void; loading?: boolean }) {
   const [filters, setFilters] = useState<Filters>({});
   const [year, setYear] = useState("");
   const [mileage, setMileage] = useState("");
@@ -16,7 +16,8 @@ export function ValuationForm({ onSubmit }: { onSubmit: (payload: ValuationReque
   const [changedParts, setChangedParts] = useState("0");
   const [paintedParts, setPaintedParts] = useState("0");
 
-  const submit = () => onSubmit({
+  const ready = Boolean(filters.brand && filters.series);
+  const submit = () => ready && onSubmit({
     ...filters,
     year: year ? Number(year) : undefined,
     mileage_km: mileage ? Number(mileage) : undefined,
@@ -48,7 +49,10 @@ export function ValuationForm({ onSubmit }: { onSubmit: (payload: ValuationReque
       <label className="clean-only-toggle"><input type="checkbox" checked={cleanOnly} onChange={(event) => updateCleanOnly(event.target.checked)} /><span><strong>Temiz araç</strong><small>Temiz beyanlı ilanlarla karşılaştır</small></span></label>
       {!cleanOnly && <><label className="field"><span>Değişen parça</span><input type="number" min="0" max="30" value={changedParts} onChange={(event) => setChangedParts(event.target.value)} placeholder="Örn. 0" /></label>
       <label className="field"><span>Boyalı parça</span><input type="number" min="0" max="30" value={paintedParts} onChange={(event) => setPaintedParts(event.target.value)} placeholder="Örn. 1" /></label></>}
-      <button className={`primary-button valuation-submit ${cleanOnly ? "clean-only" : ""}`} onClick={submit}>Araç değerini hesapla</button>
+      <div className={`valuation-submit-group ${cleanOnly ? "clean-only" : ""}`}>
+        <button className="primary-button valuation-submit" onClick={submit} disabled={!ready || loading}>{loading ? "Hesaplanıyor…" : "Araç değerini hesapla"}</button>
+        {!ready && <small>Hesaplamak için marka ve seri seçin.</small>}
+      </div>
     </div>
   </div>;
 }
