@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { flushSync } from "react-dom";
 
 export type Theme = "light" | "dark";
 const STORAGE_KEY = "arabamfiyat-theme";
@@ -29,12 +30,21 @@ export function useTheme() {
     media?.addEventListener?.("change", follow);
     return () => media?.removeEventListener?.("change", follow);
   }, [theme]);
+  // Printing always uses the light palette, charts included.
+  const [printing, setPrinting] = useState(false);
+  useEffect(() => {
+    const before = () => flushSync(() => setPrinting(true));
+    const after = () => setPrinting(false);
+    window.addEventListener("beforeprint", before);
+    window.addEventListener("afterprint", after);
+    return () => { window.removeEventListener("beforeprint", before); window.removeEventListener("afterprint", after); };
+  }, []);
   const toggle = () => setTheme((current) => {
     const next = current === "dark" ? "light" : "dark";
     try { window.localStorage.setItem(STORAGE_KEY, next); } catch { /* private mode: the choice lasts this visit */ }
     return next;
   });
-  return { theme, toggle };
+  return { theme, chartTheme: (printing ? "light" : theme) as Theme, toggle };
 }
 
 /** SVG chart colours; chart libraries set them as attributes, where CSS variables are not reliable. */
