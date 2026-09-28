@@ -16,6 +16,7 @@
 - **Piyasa trendleri:** Medyan fiyat trendi, marka karşılaştırma tablosu (30/90 günlük ve yıllık değişimlerle), en çok yükselen ve düşen markalar, yıl/kilometre ile fiyat ilişkisi.
 - **Dayanak ilanlar:** Değerlemenin dayandığı ilanlardan araca en çok benzeyen 10 tanesi, gerçek fiyatları ve tahmine göre farklarıyla listelenir.
 - **Satış bildirimi:** Kullanıcı aracını gerçekte kaça sattığını paylaşabilir. Bildirimler ilanlardan ayrı bir veritabanında (`sale_reports.sqlite3`) tutulur; aynı araç için en az 3 bildirim birikince değerlemede yalnızca medyanı gösterilir.
+- **Karşılaştırma:** İki aracın piyasa değeri, fiyat aralığı, kasko değeri ve kullanıcı satışları tek tabloda, aradaki farkla birlikte gösterilir.
 - **Paylaşma:** Her değerlemenin adresi o aracı içerir; bağlantıyı açan kişi aynı sonucu görür. Sonuç tek tıkla PDF olarak kaydedilebilir.
 - **Şeffaflık:** Kaç ilanın eşleştiği, kaçının analize girdiği ve kaç aykırı fiyatın çıkarıldığı her sonuçta yazılır. Yetersiz veride sahte değişim yüzdesi gösterilmez.
 

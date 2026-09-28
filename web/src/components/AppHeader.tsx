@@ -1,7 +1,7 @@
-import { BarChart3, CarFront, Info, Menu, X } from "lucide-react";
+import { ArrowLeftRight, BarChart3, CarFront, Info, Menu, X } from "lucide-react";
 import { useState } from "react";
 
-type Props = { page: "market" | "valuation"; onNavigate: (path: string) => void };
+type Props = { page: "market" | "valuation" | "compare"; onNavigate: (path: string) => void };
 
 export function AppHeader({ page, onNavigate }: Props) {
   const [open, setOpen] = useState(false);
@@ -16,6 +16,7 @@ export function AppHeader({ page, onNavigate }: Props) {
       <nav className={open ? "main-nav open" : "main-nav"} aria-label="Ana menü">
         <button className={page === "market" ? "active" : ""} onClick={() => navigate("/piyasa-trendleri")}><BarChart3 size={17} />Piyasa Trendleri</button>
         <button className={page === "valuation" ? "active" : ""} onClick={() => navigate("/arac-degerleme")}><CarFront size={17} />Araç Değerleme</button>
+        <button className={page === "compare" ? "active" : ""} onClick={() => navigate("/arac-karsilastirma")}><ArrowLeftRight size={17} />Karşılaştır</button>
         <a href="/piyasa-trendleri#metodoloji" onClick={(event) => { event.preventDefault(); navigateToMethodology(); }}><Info size={17} />Proje Hakkında</a>
       </nav>
       <button className="icon-button menu-toggle" onClick={() => setOpen(!open)} aria-label="Menüyü aç veya kapat" aria-expanded={open}>{open ? <X /> : <Menu />}</button>
