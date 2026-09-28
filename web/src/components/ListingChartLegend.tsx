@@ -1,3 +1,4 @@
+import { useChartColors } from "../theme";
 type LegendItemProps = {
   color: string;
   label: string;
@@ -13,14 +14,15 @@ function LegendItem({ color, label, detail }: LegendItemProps) {
 }
 
 export function ListingChartLegend({ showClean }: { showClean: boolean }) {
+  const c = useChartColors();
   return <div className="listing-chart-legend" aria-label="Grafik serileri hakkında bilgi">
     <LegendItem
-      color="#2563eb"
+      color={c.all}
       label="Tüm ilanlar"
       detail="Seçili filtreye uyan temizlenmiş ilanların fiyat görünümüdür."
     />
     {showClean && <LegendItem
-      color="#16875b"
+      color={c.clean}
       label="Temiz araç ilanları"
       detail="İlan başlığı veya filtre bilgisinde boyasız, değişensiz ya da tramersiz beyanı bulunan ilanlardır. Ekspertiz doğrulaması değildir."
     />}

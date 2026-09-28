@@ -18,6 +18,7 @@
 - **Satış bildirimi:** Kullanıcı aracını gerçekte kaça sattığını paylaşabilir. Bildirimler ilanlardan ayrı bir veritabanında (`sale_reports.sqlite3`) tutulur; aynı araç için en az 3 bildirim birikince değerlemede yalnızca medyanı gösterilir.
 - **Karşılaştırma:** İki aracın piyasa değeri, fiyat aralığı, kasko değeri ve kullanıcı satışları tek tabloda, aradaki farkla birlikte gösterilir.
 - **Paylaşma:** Her değerlemenin adresi o aracı içerir; bağlantıyı açan kişi aynı sonucu görür. Sonuç tek tıkla PDF olarak kaydedilebilir.
+- **Koyu tema:** Sistem ayarını izler; üst menüdeki düğmeyle değiştirilebilir ve tercih hatırlanır.
 - **Şeffaflık:** Kaç ilanın eşleştiği, kaçının analize girdiği ve kaç aykırı fiyatın çıkarıldığı her sonuçta yazılır. Yetersiz veride sahte değişim yüzdesi gösterilmez.
 
 ![Piyasa trendleri](docs/images/market-overview.png)

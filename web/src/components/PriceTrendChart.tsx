@@ -6,6 +6,7 @@ import type { Filters, TrendPoint } from "../types";
 import { compactMoney, money, number, shortDate } from "../utils/format";
 import { EmptyState, ErrorState, LoadingSkeleton } from "./StatePanels";
 import { ListingChartLegend } from "./ListingChartLegend";
+import { useChartColors } from "../theme";
 
 type Range = "30" | "90" | "180" | "365" | "all" | "custom";
 type Interval = "day" | "week";
@@ -23,19 +24,21 @@ function TrendTooltip({ active, payload, interval, stat }: {
   interval: Interval;
   stat: "median" | "average";
 }) {
+  const c = useChartColors();
   const point = payload?.[0]?.payload;
   if (!active || !point) return null;
   const all = stat === "median" ? point.median_price : point.average_price;
   const clean = stat === "median" ? point.clean_median_price : point.clean_average_price;
   return <div className="chart-tooltip">
     <strong>{interval === "week" ? `${shortDate(point.date)} haftası` : shortDate(point.date)}</strong>
-    <span><i style={{ background: "#2563eb" }} />Tüm ilanlar <b>{money(all)}</b></span>
+    <span><i style={{ background: c.all }} />Tüm ilanlar <b>{money(all)}</b></span>
     <small>{number(point.listing_count)} ilan</small>
-    {clean != null && <><span><i style={{ background: "#16875b" }} />Temiz araç ilanları <b>{money(clean)}</b></span><small>{number(point.clean_listing_count)} ilan</small></>}
+    {clean != null && <><span><i style={{ background: c.clean }} />Temiz araç ilanları <b>{money(clean)}</b></span><small>{number(point.clean_listing_count)} ilan</small></>}
   </div>;
 }
 
 export function PriceTrendChart({ filters }: { filters: Filters }) {
+  const c = useChartColors();
   const [range, setRange] = useState<Range>("all");
   const [interval, setTrendInterval] = useState<Interval>("week");
   const [stat, setStat] = useState<"median" | "average">("median");
@@ -59,14 +62,14 @@ export function PriceTrendChart({ filters }: { filters: Filters }) {
     <div className="chart-toolbar"><div className="range-buttons">{(Object.keys(RANGE_LABELS) as Range[]).map((item) => <button key={item} className={range === item ? "selected" : ""} onClick={() => setRange(item)}>{RANGE_LABELS[item]}</button>)}</div>{range === "custom" && <div className="date-controls"><label>Başlangıç<input type="date" value={customStart} onChange={(event) => setCustomStart(event.target.value)} /></label><label>Bitiş<input type="date" value={customEnd} onChange={(event) => setCustomEnd(event.target.value)} /></label></div>}</div>
     {loading ? <LoadingSkeleton rows={5} /> : error ? <ErrorState detail={error} /> : !data?.available ? <EmptyState title="Geçmiş trend oluşmadı" detail={data?.message} /> : <div className="chart-wrap"><ResponsiveContainer width="100%" height="100%">
       <LineChart data={data.points} margin={{ top: 12, right: 12, left: 4, bottom: 6 }}>
-        <CartesianGrid stroke="#e7edf5" strokeDasharray="3 4" vertical={false} />
+        <CartesianGrid stroke={c.grid} strokeDasharray="3 4" vertical={false} />
         <XAxis dataKey="date" tickFormatter={shortDate} tickLine={false} axisLine={false} minTickGap={28} />
         {/* A price trend reads its movement, so the axis hugs the data instead of starting at zero. */}
         <YAxis tickFormatter={compactMoney} tickLine={false} axisLine={false} width={78} domain={[(min: number) => Math.floor(min * 0.94 / 50_000) * 50_000, (max: number) => Math.ceil(max * 1.04 / 50_000) * 50_000]} />
-        <Tooltip content={<TrendTooltip interval={interval} stat={stat} />} cursor={{ stroke: "#98a2b3", strokeDasharray: "3 3" }} />
+        <Tooltip content={<TrendTooltip interval={interval} stat={stat} />} cursor={{ stroke: c.cursor, strokeDasharray: "3 3" }} />
         <Legend content={<ListingChartLegend showClean={data.clean_available} />} />
-        <Line type="monotone" dataKey={priceKey} name="Tüm ilanlar" stroke="#2563eb" strokeWidth={2} dot={interval === "week" ? { r: 3, strokeWidth: 2, fill: "#fff" } : false} activeDot={{ r: 5, stroke: "#fff", strokeWidth: 2 }} />
-        {data.clean_available && <Line type="monotone" dataKey={cleanPriceKey} name="Temiz araç ilanları" stroke="#16875b" strokeWidth={2} dot={interval === "week" ? { r: 3, strokeWidth: 2, fill: "#fff" } : false} activeDot={{ r: 5, stroke: "#fff", strokeWidth: 2 }} connectNulls />}
+        <Line type="monotone" dataKey={priceKey} name="Tüm ilanlar" stroke={c.all} strokeWidth={2} dot={interval === "week" ? { r: 3, strokeWidth: 2, fill: c.dotFill } : false} activeDot={{ r: 5, stroke: c.dotFill, strokeWidth: 2 }} />
+        {data.clean_available && <Line type="monotone" dataKey={cleanPriceKey} name="Temiz araç ilanları" stroke={c.clean} strokeWidth={2} dot={interval === "week" ? { r: 3, strokeWidth: 2, fill: c.dotFill } : false} activeDot={{ r: 5, stroke: c.dotFill, strokeWidth: 2 }} connectNulls />}
       </LineChart>
     </ResponsiveContainer></div>}
   </section>;

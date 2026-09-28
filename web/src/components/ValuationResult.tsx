@@ -3,6 +3,7 @@ import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, Responsiv
 import type { ReferenceMileagePoint, ReferencePricePoint, TrendPoint, ValuationResponse } from "../types";
 import { money, number, percent } from "../utils/format";
 import { EmptyState } from "./StatePanels";
+import { useChartColors } from "../theme";
 
 function ConditionAdjustmentCard({ data }: { data: ValuationResponse }) {
   // Entered damage that could not be applied must be visible, not silently dropped.
@@ -116,6 +117,7 @@ function PriceScatterTooltip({ active, payload }: { active?: boolean; payload?: 
 }
 
 function PriceDistribution({ data }: { data: ValuationResponse }) {
+  const c = useChartColors();
   const points = data.reference_price_points ?? [];
   const low = data.recommended_low_price;
   const median = data.median_price;
@@ -149,15 +151,15 @@ function PriceDistribution({ data }: { data: ValuationResponse }) {
     <div className="price-strip-chart" aria-label="Benzer ilanların etkileşimli nokta dağılımı grafiği">
       <ResponsiveContainer width="100%" height="100%">
         <ScatterChart margin={{ top: 24, right: 20, left: 4, bottom: 8 }}>
-          <CartesianGrid vertical={false} stroke="#e7edf5" strokeDasharray="3 4" />
+          <CartesianGrid vertical={false} stroke={c.grid} strokeDasharray="3 4" />
           <XAxis type="number" dataKey="price" domain={[Math.max(0, minimum - padding), maximum + padding]} tickFormatter={compactPrice} tickLine={false} axisLine={false} minTickGap={34} />
           <YAxis type="number" dataKey="lane" domain={[0, laneCount + 1]} hide />
-          <Tooltip cursor={{ stroke: "#b9c9df", strokeDasharray: "3 3" }} content={<PriceScatterTooltip />} />
-          <ReferenceArea x1={low} x2={high} y1={0} y2={laneCount + 1} fill="#dff2e9" fillOpacity={0.72} />
-          <ReferenceLine x={median} stroke="#123154" strokeWidth={2} />
-          {data.asking_price != null && <ReferenceLine x={data.asking_price} stroke="#e8692e" strokeWidth={2} strokeDasharray="5 4" />}
-          <Scatter data={outsideRange} fill="#78a7f5" />
-          <Scatter data={insideRange} fill="#16875b" />
+          <Tooltip cursor={{ stroke: c.muted, strokeDasharray: "3 3" }} content={<PriceScatterTooltip />} />
+          <ReferenceArea x1={low} x2={high} y1={0} y2={laneCount + 1} fill={c.range} fillOpacity={0.72} />
+          <ReferenceLine x={median} stroke={c.median} strokeWidth={2} />
+          {data.asking_price != null && <ReferenceLine x={data.asking_price} stroke={c.asking} strokeWidth={2} strokeDasharray="5 4" />}
+          <Scatter data={outsideRange} fill={c.highlight} />
+          <Scatter data={insideRange} fill={c.clean} />
         </ScatterChart>
       </ResponsiveContainer>
     </div>
@@ -195,6 +197,7 @@ function shortDate(value: string) {
 }
 
 function ReferenceInsights({ data }: { data: ValuationResponse }) {
+  const c = useChartColors();
   const mileageData: ReferenceMileageChartPoint[] = (data.reference_mileage_points ?? []).map((point) => ({
     ...point,
     label: `${Math.round(point.lower_mileage_km / 1_000)}-${Math.round(point.upper_mileage_km / 1_000)} bin km`,
@@ -208,11 +211,11 @@ function ReferenceInsights({ data }: { data: ValuationResponse }) {
       <div className="reference-chart-wrap">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={mileageData} margin={{ top: 22, right: 18, left: 4, bottom: 8 }}>
-            <CartesianGrid vertical={false} stroke="#e7edf5" strokeDasharray="3 4" />
+            <CartesianGrid vertical={false} stroke={c.grid} strokeDasharray="3 4" />
             <XAxis dataKey="label" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={28} />
             <YAxis tickFormatter={compactPrice} tickLine={false} axisLine={false} width={76} />
-            <Tooltip cursor={{ stroke: "#b9c9df", strokeDasharray: "3 3" }} content={<ReferenceMileageTooltip />} />
-            <Line type="monotone" dataKey="median_price" name="Medyan fiyat" stroke="#16875b" strokeWidth={3} dot={{ r: 4, fill: "#fff", strokeWidth: 3 }} activeDot={{ r: 6 }} />
+            <Tooltip cursor={{ stroke: c.muted, strokeDasharray: "3 3" }} content={<ReferenceMileageTooltip />} />
+            <Line type="monotone" dataKey="median_price" name="Medyan fiyat" stroke={c.clean} strokeWidth={3} dot={{ r: 4, fill: c.dotFill, strokeWidth: 3 }} activeDot={{ r: 6 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -222,11 +225,11 @@ function ReferenceInsights({ data }: { data: ValuationResponse }) {
       <div className="reference-chart-wrap">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={trendData} margin={{ top: 22, right: 18, left: 4, bottom: 8 }}>
-            <CartesianGrid vertical={false} stroke="#e7edf5" strokeDasharray="3 4" />
+            <CartesianGrid vertical={false} stroke={c.grid} strokeDasharray="3 4" />
             <XAxis dataKey="label" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={28} />
             <YAxis tickFormatter={compactPrice} tickLine={false} axisLine={false} width={76} />
-            <Tooltip cursor={{ stroke: "#b9c9df", strokeDasharray: "3 3" }} content={<ReferenceTrendTooltip />} />
-            <Line type="monotone" dataKey="median_price" name="Günlük medyan fiyat" stroke="#2563eb" strokeWidth={3} dot={{ r: 4, fill: "#fff", strokeWidth: 3 }} activeDot={{ r: 6 }} />
+            <Tooltip cursor={{ stroke: c.muted, strokeDasharray: "3 3" }} content={<ReferenceTrendTooltip />} />
+            <Line type="monotone" dataKey="median_price" name="Günlük medyan fiyat" stroke={c.all} strokeWidth={3} dot={{ r: 4, fill: c.dotFill, strokeWidth: 3 }} activeDot={{ r: 6 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
