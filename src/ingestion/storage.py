@@ -6,9 +6,9 @@ import sqlite3
 from collections.abc import Iterable
 from pathlib import Path
 
-from .schema import VehicleListing
+from src.data_paths import DEFAULT_DB_PATH
 
-DEFAULT_DB_PATH = Path("data") / "runtime" / "vehicle_listings.sqlite3"
+from .schema import VehicleListing
 
 
 class ListingStore:
