@@ -96,7 +96,7 @@ def build_price_relationships(listings: pd.DataFrame) -> dict[str, list[dict[str
 
     year_points: list[dict[str, object]] = []
     if "year" in listings:
-        years = listings.dropna(subset=["year"]).copy()
+        years = listings[["year", "price"]].dropna(subset=["year"])
         years["year"] = pd.to_numeric(years["year"], errors="coerce")
         years = years[years["year"].between(1950, 2100)]
         grouped_years = years.groupby("year", as_index=False).agg(
@@ -110,7 +110,7 @@ def build_price_relationships(listings: pd.DataFrame) -> dict[str, list[dict[str
 
     mileage_points: list[dict[str, object]] = []
     if "mileage_km" in listings:
-        mileages = listings.dropna(subset=["mileage_km"]).copy()
+        mileages = listings[["mileage_km", "price"]].dropna(subset=["mileage_km"])
         mileages["mileage_km"] = pd.to_numeric(mileages["mileage_km"], errors="coerce")
         mileages = mileages[mileages["mileage_km"] >= 0]
         for minimum, maximum, label in MILEAGE_BANDS:
@@ -130,6 +130,8 @@ def build_price_relationships(listings: pd.DataFrame) -> dict[str, list[dict[str
 
 def price_relationships(repository: ListingRepository, filters: dict[str, Any]) -> dict[str, object]:
     listings = repository.load_listings(filters)
+    # Only these columns matter here; slicing first keeps the work off the full table.
+    listings = listings[[column for column in ("year", "mileage_km", "price", "is_clean_claimed") if column in listings]]
     points = build_price_relationships(listings)
     clean_listings = listings[listings.get("is_clean_claimed", 0).fillna(0).astype(int) == 1] if "is_clean_claimed" in listings else listings.iloc[0:0]
     clean_points = build_price_relationships(clean_listings)

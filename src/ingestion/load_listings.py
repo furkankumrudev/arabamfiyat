@@ -20,7 +20,6 @@ from pathlib import Path
 import pandas as pd
 
 from src.api.database import ListingRepository
-from src.api.services.trend_service import parse_listing_date
 from src.api.settings import sqlite_db_path
 from src.ingestion.sources.base import ListingSource
 from src.ingestion.sources.csv_file import CsvFormatError, CsvSource
@@ -71,7 +70,7 @@ def backfill_demo_snapshots(db_path: Path, reference_date: date, weeks: int = DE
     listings = repository.load_listings()
     if listings.empty:
         return 0
-    listings = listings.assign(parsed_date=listings["listing_date"].map(parse_listing_date))
+    listings = listings.assign(parsed_date=pd.to_datetime(listings["parsed_listing_date"], errors="coerce"))
     listings = listings.dropna(subset=["parsed_date"])
     saved = 0
     with closing(repository.connect()) as connection:

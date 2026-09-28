@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
-from contextlib import closing
+import threading
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager, closing
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -16,6 +18,7 @@ from src.ingestion.sources.demo import DEMO_SOURCE
 from src.maintenance.pipeline import last_success_at
 
 from .database import DatabaseUnavailable, ListingRepository
+from .dependencies import REPOSITORY
 from .routes import catalog, listings, market, valuation
 from .schemas import HealthResponse
 from .settings import cors_origins, web_dist_dir
@@ -23,7 +26,24 @@ from .settings import cors_origins, web_dist_dir
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="ArabamFiyat.com API", version="0.1.0", docs_url="/docs")
+def _warm_listing_cache() -> None:
+    try:
+        REPOSITORY.warm()
+    except DatabaseUnavailable:
+        pass  # Nothing to warm yet; the first request reports it.
+    except Exception:
+        logger.exception("Listing cache warm-up failed")
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    # Read the listing table in the background at startup, so the first visitor
+    # does not wait for hundreds of thousands of rows to load.
+    threading.Thread(target=_warm_listing_cache, name="listing-cache-warmup", daemon=True).start()
+    yield
+
+
+app = FastAPI(title="ArabamFiyat.com API", version="0.1.0", docs_url="/docs", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins(),

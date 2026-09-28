@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 import sqlite3
 import tempfile
+import time
 import unittest
 from contextlib import closing
 from datetime import date
@@ -149,6 +151,29 @@ class ApiServiceTests(unittest.TestCase):
                 (day, median, median),
             )
             connection.commit()
+
+    def test_filters_match_case_insensitively_and_by_range(self) -> None:
+        self.assertEqual(len(self.repository.load_listings({"brand": "test"})), 2)
+        self.assertEqual(len(self.repository.load_listings({"brand": "Test", "year_min": 2021})), 1)
+        self.assertEqual(len(self.repository.load_listings({"mileage_max": 70000})), 1)
+        self.assertEqual(len(self.repository.load_listings({"clean_only": True})), 1)
+        self.assertTrue(self.repository.load_listings({"brand": "Başka"}).empty)
+
+    def test_listing_dates_are_parsed_once_for_the_engine(self) -> None:
+        listings = self.repository.load_listings()
+        self.assertEqual(str(listings["parsed_listing_date"].iloc[0].date()), "2026-07-01")
+
+    def test_cache_follows_database_changes(self) -> None:
+        self.assertEqual(len(self.repository.load_listings()), 2)
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            connection.execute(
+                """INSERT INTO vehicle_listings_clean (id, title, brand, series, model, year, mileage_km, price, currency)
+                   VALUES (3, 'Yeni', 'Test', 'A', '1.0', 2022, 1000, 1100000, 'TRY')"""
+            )
+            connection.commit()
+        os.utime(self.db_path, ns=(time.time_ns(), time.time_ns() + 1_000_000))
+
+        self.assertEqual(len(self.repository.load_listings()), 3)
 
     def test_entered_damage_is_never_dropped_silently(self) -> None:
         payload = {"brand": "Test", "series": "A", "model": None, "year": 2020, "mileage_km": 80000,

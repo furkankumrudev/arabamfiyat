@@ -4,18 +4,27 @@ from __future__ import annotations
 
 import sqlite3
 from contextlib import closing
+from datetime import date
 from pathlib import Path
 from threading import RLock
 from typing import Any
 
 import pandas as pd
 
+from .listing_dates import parse_listing_dates
 from .settings import sqlite_db_path
 
 DEFAULT_DB_PATH = sqlite_db_path()
 
 LISTING_TABLES = ("vehicle_listings_clean", "vehicle_listings")
 SNAPSHOT_TABLE = "market_price_snapshots"
+LISTING_COLUMNS = (
+    "id", "title", "brand", "series", "model", "year", "mileage_km",
+    "transmission", "fuel_type", "body_type", "city", "district", "price",
+    "currency", "listing_date", "listing_url", "image_url", "is_clean_claimed", "scraped_at",
+)
+# Matched case-insensitively against the values the dropdowns offer.
+EXACT_FILTER_COLUMNS = ("brand", "series", "model", "body_type", "fuel_type", "transmission")
 
 
 class DatabaseUnavailable(RuntimeError):
@@ -27,7 +36,8 @@ class ListingRepository:
 
     def __init__(self, db_path: Path = DEFAULT_DB_PATH) -> None:
         self.db_path = db_path
-        self._frame_cache: dict[tuple[tuple[str, str], ...], tuple[int, pd.DataFrame]] = {}
+        self._cache: tuple[tuple[int, date], pd.DataFrame] | None = None
+        self._folded_cache: dict[tuple[int, str], pd.Series] = {}
         self._cache_lock = RLock()
 
     def connect(self) -> sqlite3.Connection:
@@ -76,66 +86,80 @@ class ListingRepository:
             return int(connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
 
     def load_listings(self, filters: dict[str, Any] | None = None) -> pd.DataFrame:
-        """Return real listings only; all user values remain query parameters."""
-        filters = filters or {}
-        cache_key = tuple(sorted((key, str(value)) for key, value in filters.items() if value is not None and value != ""))
+        """Return real listings matching ``filters``; user values never reach SQL text.
+
+        The whole table is read once per database version and filtered in
+        memory. Reading it again for every filter combination made each page
+        load re-read hundreds of thousands of rows several times.
+        """
+        frame = self._all_listings()
+        active = {key: value for key, value in (filters or {}).items() if value is not None and value != "" and value is not False}
+        if not active:
+            # Copy-on-write: no data is copied unless the caller changes it.
+            return frame.copy(deep=False)
+        filters = active
+        mask = pd.Series(True, index=frame.index)
+        for column in EXACT_FILTER_COLUMNS:
+            value = filters.get(column)
+            if value and column in frame:
+                mask &= self._folded(frame, column) == str(value).strip().casefold()
+        if filters.get("clean_only") and "is_clean_claimed" in frame:
+            mask &= pd.to_numeric(frame["is_clean_claimed"], errors="coerce").fillna(0).astype(int) == 1
+        if filters.get("year_min") is not None and "year" in frame:
+            mask &= frame["year"] >= int(filters["year_min"])
+        if filters.get("year_max") is not None and "year" in frame:
+            mask &= frame["year"] <= int(filters["year_max"])
+        if filters.get("mileage_max") is not None and "mileage_km" in frame:
+            mask &= frame["mileage_km"] <= int(filters["mileage_max"])
+        # Copy-on-write makes this cheap; callers may add columns freely.
+        return frame[mask].copy()
+
+    def warm(self) -> None:
+        """Load the listing table into the cache ahead of the first request."""
+        self._all_listings()
+
+    def _all_listings(self) -> pd.DataFrame:
         try:
             mtime = self.db_path.stat().st_mtime_ns
         except FileNotFoundError as exc:
             raise DatabaseUnavailable("Veritabanı henüz bulunamadı.") from exc
+        # "Bugün" and "Dün" listing dates depend on the day they are read.
+        version = (mtime, date.today())
         with self._cache_lock:
-            cached = self._frame_cache.get(cache_key)
-            if cached and cached[0] == mtime:
-                return cached[1].copy()
-
+            if self._cache is not None and self._cache[0] == version:
+                return self._cache[1]
             with closing(self.connect()) as connection:
                 table = self.listing_table(connection)
                 columns = {str(row[1]) for row in connection.execute(f"PRAGMA table_info({table})")}
-                selected = [
-                    column
-                    for column in [
-                        "id", "title", "brand", "series", "model", "year", "mileage_km",
-                        "transmission", "fuel_type", "body_type", "city", "district", "price",
-                        "currency", "listing_date", "listing_url", "image_url", "is_clean_claimed", "scraped_at",
-                    ]
-                    if column in columns
-                ]
+                selected = [column for column in LISTING_COLUMNS if column in columns]
                 if "price" not in selected:
                     raise DatabaseUnavailable("İlan tablosunda fiyat alanı bulunamadı.")
-
-                clauses = ["price IS NOT NULL", "price > 0"]
-                params: list[Any] = []
-                exact_filters = {
-                    "brand": "brand", "series": "series", "model": "model",
-                    "body_type": "body_type", "fuel_type": "fuel_type", "transmission": "transmission",
-                }
-                for key, column in exact_filters.items():
-                    value = filters.get(key)
-                    if value and column in columns:
-                        clauses.append(f"LOWER(COALESCE({column}, '')) = LOWER(?)")
-                        params.append(str(value).strip())
-                if filters.get("clean_only") and "is_clean_claimed" in columns:
-                    clauses.append("COALESCE(is_clean_claimed, 0) = 1")
-                if filters.get("year_min") is not None and "year" in columns:
-                    clauses.append("year >= ?")
-                    params.append(int(filters["year_min"]))
-                if filters.get("year_max") is not None and "year" in columns:
-                    clauses.append("year <= ?")
-                    params.append(int(filters["year_max"]))
-                if filters.get("mileage_max") is not None and "mileage_km" in columns:
-                    clauses.append("mileage_km <= ?")
-                    params.append(int(filters["mileage_max"]))
-
-                query = f"SELECT {', '.join(selected)} FROM {table} WHERE {' AND '.join(clauses)}"
-                frame = pd.read_sql_query(query, connection, params=params)
-
+                # Plain tuples and a direct fetch are several times faster than
+                # sqlite3.Row objects or read_sql_query on large tables.
+                connection.row_factory = None
+                cursor = connection.execute(
+                    f"SELECT {', '.join(selected)} FROM {table} WHERE price IS NOT NULL AND price > 0"
+                )
+                frame = pd.DataFrame.from_records(cursor.fetchall(), columns=selected)
             for column in ("price", "year", "mileage_km"):
                 if column in frame:
                     frame[column] = pd.to_numeric(frame[column], errors="coerce")
-            frame = frame.dropna(subset=["price"]).copy()
-            self._frame_cache = {key: value for key, value in self._frame_cache.items() if value[0] == mtime}
-            self._frame_cache[cache_key] = (mtime, frame)
-            return frame.copy()
+            frame = frame.dropna(subset=["price"]).reset_index(drop=True)
+            if "listing_date" in frame:
+                frame["parsed_listing_date"] = parse_listing_dates(frame["listing_date"])
+            self._cache = (version, frame)
+            self._folded_cache = {}
+            return frame
+
+    def _folded(self, frame: pd.DataFrame, column: str) -> pd.Series:
+        """Case-folded text of a column, computed once per database version."""
+        # Keyed by the frame itself so a reload running in parallel never mixes versions.
+        key = (id(frame), column)
+        folded = self._folded_cache.get(key)
+        if folded is None:
+            folded = frame[column].fillna("").astype(str).str.strip().str.casefold()
+            self._folded_cache[key] = folded
+        return folded
 
     def distinct_values(self, column: str, filters: dict[str, Any] | None = None) -> list[str]:
         if column not in {"brand", "series", "model", "body_type", "fuel_type", "transmission"}:
