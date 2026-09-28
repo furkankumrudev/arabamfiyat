@@ -26,6 +26,14 @@ class HealthResponse(BaseModel):
     table: str | None = None
     listing_count: int | None = None
     message: str | None = None
+    # Data-flow freshness. Null values mean the pipeline has not recorded a
+    # successful run yet, which is reported as-is rather than guessed.
+    last_pipeline_success_at: str | None = None
+    pipeline_age_hours: float | None = None
+    pipeline_stale: bool | None = None
+    # Where the analysed listings come from. "demo" means synthetic data.
+    data_sources: list[str] = []
+    demo_data: bool = False
 
 
 class MarketOverview(BaseModel):
@@ -166,6 +174,46 @@ class ValuationRequest(BaseModel):
     painted_parts: int | None = Field(default=None, ge=0, le=30)
 
 
+class ReferenceValue(BaseModel):
+    """TSB kasko reference value: an insurance figure, not an asking price."""
+
+    value: float
+    period: str
+    source: str
+    model_year: int
+    # "model": the package matched; "series": median of the series for that year.
+    match: str
+    matched_name: str | None = None
+    candidate_count: int
+    market_to_reference_percent: float | None = None
+
+
+class SaleReportSummary(BaseModel):
+    """Median of user-reported sale prices; hidden below the minimum report count."""
+
+    count: int
+    median_price: float | None = None
+    year_window: int
+
+
+class SaleReportRequest(BaseModel):
+    brand: str = Field(min_length=1, max_length=80)
+    series: str = Field(min_length=1, max_length=100)
+    model: str | None = Field(default=None, max_length=140)
+    year: int = Field(ge=1950, le=2100)
+    mileage_km: int | None = Field(default=None, ge=0, le=2_000_000)
+    sale_price: int = Field(ge=10_000, le=200_000_000)
+    sold_month: str | None = Field(default=None, pattern=r"^20\d{2}-(0[1-9]|1[0-2])$")
+    city: str | None = Field(default=None, max_length=60)
+    changed_parts: int | None = Field(default=None, ge=0, le=30)
+    painted_parts: int | None = Field(default=None, ge=0, le=30)
+
+
+class SaleReportResponse(BaseModel):
+    status: str
+    message: str
+
+
 class ValuationResponse(BaseModel):
     status: str
     estimated_market_value: float | None = None
@@ -184,8 +232,6 @@ class ValuationResponse(BaseModel):
     reference_listing_trend: list[TrendPoint] = Field(default_factory=list)
     condition_adjustment_percent: float | None = None
     condition_adjustment_note: str | None = None
-
-
-class SimilarListingsResponse(BaseModel):
-    items: list[SimilarListing] = Field(default_factory=list)
-    message: str | None = None
+    reference_value: ReferenceValue | None = None
+    comparable_listings: list[SimilarListing] = Field(default_factory=list)
+    sale_reports: SaleReportSummary | None = None

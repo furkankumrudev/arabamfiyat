@@ -12,10 +12,14 @@ if not exist "web\node_modules" (
   exit /b 1
 )
 
-echo [1/2] Python testleri calisiyor...
+echo [1/3] Ruff lint calisiyor...
+.venv\Scripts\python.exe -m ruff check .
+if errorlevel 1 exit /b 1
+
+echo [2/3] Python testleri calisiyor...
 .venv\Scripts\python.exe -m unittest discover -s tests -v
 if errorlevel 1 exit /b 1
 
-echo [2/2] React production build calisiyor...
+echo [3/3] React production build calisiyor...
 cd web
 call npm.cmd run build

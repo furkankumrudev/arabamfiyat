@@ -17,6 +17,7 @@ import sqlite3
 import unicodedata
 from collections import Counter
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -37,7 +38,6 @@ TEXT_FIXES = {
     "TofaÅŸ": "Tofaş",
     "TofaÅ£": "Tofaş",
     "Tofaţ": "Tofaş",
-    "TofaÅ£": "Tofaş",
     "Sahin": "Şahin",
     "Şahin": "Şahin",
     "Ţahin": "Şahin",
@@ -131,13 +131,28 @@ class ModelOutlierPolicy:
         return max(q3 + self.iqr_multiplier * (q3 - q1), median * self.median_multiplier)
 
 
+DEFAULT_MIN_PRICE = 50_000
+DEFAULT_MAX_PRICE = 150_000_000
+DEFAULT_MIN_YEAR = 1980
+DEFAULT_MAX_MILEAGE = 700_000
+
+
+def default_max_year() -> int:
+    """Upper model-year bound, derived rather than hardcoded.
+
+    Dealers list next year's model year before the calendar turns, and a fixed
+    bound would silently reject every new listing once the year rolls over.
+    """
+    return date.today().year + 1
+
+
 @dataclass(frozen=True, slots=True)
 class CleanRules:
-    min_price: int
-    max_price: int
-    min_year: int
-    max_year: int
-    max_mileage: int
+    min_price: int = DEFAULT_MIN_PRICE
+    max_price: int = DEFAULT_MAX_PRICE
+    min_year: int = DEFAULT_MIN_YEAR
+    max_year: int = field(default_factory=default_max_year)
+    max_mileage: int = DEFAULT_MAX_MILEAGE
     model_outlier_policy: ModelOutlierPolicy = field(default_factory=ModelOutlierPolicy)
 
 
@@ -731,8 +746,6 @@ def missing_counts(connection: sqlite3.Connection, columns: list[str]) -> dict[s
 def clean_database(db_path: Path, catalog_path: Path, rules: CleanRules) -> CleanResult:
     brand_map = load_catalog_brands(catalog_path)
     known_brand_keys = {normalize_key(value) for value in brand_map.values()}
-    brand_by_slug = {key: value for key, value in brand_map.items() if "-" in key or key.isascii()}
-
     rejection_counts: Counter[str] = Counter()
     seen_keys: set[tuple[str, ...]] = set()
 
@@ -845,11 +858,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Create cleaned and normalized vehicle listing tables.")
     parser.add_argument("--db-path", default=str(DEFAULT_DB_PATH))
     parser.add_argument("--catalog-path", default=str(CATALOG_PATH))
-    parser.add_argument("--min-price", type=int, default=50_000)
-    parser.add_argument("--max-price", type=int, default=150_000_000)
-    parser.add_argument("--min-year", type=int, default=1980)
-    parser.add_argument("--max-year", type=int, default=2026)
-    parser.add_argument("--max-mileage", type=int, default=700_000)
+    parser.add_argument("--min-price", type=int, default=DEFAULT_MIN_PRICE)
+    parser.add_argument("--max-price", type=int, default=DEFAULT_MAX_PRICE)
+    parser.add_argument("--min-year", type=int, default=DEFAULT_MIN_YEAR)
+    parser.add_argument("--max-year", type=int, default=default_max_year())
+    parser.add_argument("--max-mileage", type=int, default=DEFAULT_MAX_MILEAGE)
     parser.add_argument("--outlier-min-group-size", type=int, default=50)
     parser.add_argument("--outlier-median-multiplier", type=float, default=20.0)
     parser.add_argument("--outlier-iqr-multiplier", type=float, default=3.0)

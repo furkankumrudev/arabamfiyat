@@ -1,0 +1,4 @@
+source_listing_id;title;brand;series;model;year;mileage_km;price;city;fuel_type;transmission;body_type;listing_date
+ornek-1;2020 Fiat Egea 1.4 Fire Easy;Fiat;Egea;1.4 Fire Easy;2020;85.000 km;1.050.000 TL;Ankara;Benzin;Manuel;Sedan;12 Eylül 2026
+ornek-2;2019 Renault Clio 1.0 TCe Joy boyasız değişensiz;Renault;Clio;1.0 TCe Joy;2019;62.500 km;985.000 TL;İstanbul;Benzin;Manuel;Hatchback;14 Eylül 2026
+ornek-3;2021 Toyota Corolla 1.5 Dream;Toyota;Corolla;1.5 Dream;2021;48.000 km;1.575.000 TL;İzmir;Benzin;Otomatik;Sedan;20 Eylül 2026

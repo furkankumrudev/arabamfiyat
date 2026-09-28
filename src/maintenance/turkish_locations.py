@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 TURKISH_PROVINCES = (
     "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Aksaray", "Amasya", "Ankara", "Antalya",
     "Ardahan", "Artvin", "Aydın", "Balıkesir", "Bartın", "Batman", "Bayburt", "Bilecik",

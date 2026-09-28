@@ -2,53 +2,36 @@
 
 from __future__ import annotations
 
-import re
 import sqlite3
 from datetime import date, timedelta
 
 import pandas as pd
 
 from ..database import SNAPSHOT_TABLE
+from ..listing_dates import TURKISH_MONTHS, parse_listing_date, parse_listing_dates
 
-TURKISH_MONTHS = {
-    "ocak": 1, "şubat": 2, "subat": 2, "mart": 3, "nisan": 4,
-    "mayıs": 5, "mayis": 5, "haziran": 6, "temmuz": 7, "ağustos": 8,
-    "agustos": 8, "eylül": 9, "eylul": 9, "ekim": 10, "kasım": 11,
-    "kasim": 11, "aralık": 12, "aralik": 12,
-}
-
-
-def parse_listing_date(value: object) -> pd.Timestamp | None:
-    """Parse the formats emitted by the listing source without inventing dates."""
-    text = str(value or "").strip()
-    if not text:
-        return None
-    folded = text.casefold()
-    if folded == "bugün" or folded == "bugun":
-        return pd.Timestamp(date.today())
-    if folded == "dün" or folded == "dun":
-        return pd.Timestamp(date.today() - timedelta(days=1))
-    match = re.search(r"(\d{1,2})\s+([A-Za-zÇĞİÖŞÜçğıöşü]+)\s+(\d{4})", text)
-    if match:
-        month = TURKISH_MONTHS.get(match.group(2).casefold())
-        if month:
-            try:
-                return pd.Timestamp(date(int(match.group(3)), month, int(match.group(1))))
-            except ValueError:
-                return None
-    parsed = pd.to_datetime(text, errors="coerce", dayfirst=True)
-    return None if pd.isna(parsed) else pd.Timestamp(parsed).normalize()
+__all__ = ["TURKISH_MONTHS", "build_listing_trend", "parse_listing_date", "snapshot_changes"]
 
 
 def build_listing_trend(
     listings: pd.DataFrame,
     start_date: date | None = None,
     end_date: date | None = None,
+    interval: str = "day",
 ) -> list[dict[str, object]]:
+    """Median and mean asking price per listing day, or per week starting Monday.
+
+    Weekly points are computed from the listings themselves, not from daily
+    medians, so a week's median is a true median.
+    """
     if listings.empty or "listing_date" not in listings:
         return []
-    frame = listings.copy()
-    frame["date"] = frame["listing_date"].map(parse_listing_date)
+    frame = listings[[column for column in ("price", "listing_date", "parsed_listing_date") if column in listings]].copy()
+    # The repository parses dates once per database version; reuse that when present.
+    if "parsed_listing_date" in frame:
+        frame["date"] = pd.to_datetime(frame["parsed_listing_date"], errors="coerce")
+    else:
+        frame["date"] = parse_listing_dates(frame["listing_date"])
     frame = frame.dropna(subset=["date", "price"])
     if start_date:
         frame = frame[frame["date"] >= pd.Timestamp(start_date)]
@@ -56,6 +39,8 @@ def build_listing_trend(
         frame = frame[frame["date"] <= pd.Timestamp(end_date)]
     if frame.empty:
         return []
+    if interval == "week":
+        frame["date"] = frame["date"] - pd.to_timedelta(frame["date"].dt.weekday, unit="D")
     grouped = frame.groupby("date", as_index=False).agg(
         median_price=("price", "median"), average_price=("price", "mean"), listing_count=("price", "count")
     )

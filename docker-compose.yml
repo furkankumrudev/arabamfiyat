@@ -3,13 +3,22 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
+    restart: unless-stopped
     environment:
       SQLITE_DB_PATH: /app/runtime/vehicle_listings.sqlite3
       SOURCE_DB_PATH: /seed-data/vehicle_listings.sqlite3
+      # The entrypoint only sees variables passed here; RESEED_DB=1 refreshes the volume.
+      RESEED_DB: ${RESEED_DB:-0}
+      # Without data/runtime/vehicle_listings.sqlite3 the API starts on demo data;
+      # DEMO_DATA=0 starts it empty instead.
+      DEMO_DATA: ${DEMO_DATA:-1}
       CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
     volumes:
       - ./data/runtime:/seed-data:ro
       - ./data/models:/app/data/models:ro
+      # Keep the working database (and the market snapshots that accumulate in
+      # it) alive across container restarts instead of reseeding from scratch.
+      - api-runtime:/app/runtime
     expose:
       - "8000"
     healthcheck:
@@ -19,12 +28,39 @@ services:
       retries: 3
       start_period: 20s
 
+  # Runs the unattended maintenance steps on a daily schedule. It shares the
+  # API's runtime volume: the scheduler is the only writer, the API only reads.
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
+    command: ["python", "-m", "src.maintenance.scheduler"]
+    environment:
+      SQLITE_DB_PATH: /app/runtime/vehicle_listings.sqlite3
+      # Wait for the API to have seeded the volume; never reseed from here.
+      PIPELINE_HOUR: "3"
+      PIPELINE_MINUTE: "0"
+      PIPELINE_RUN_ON_START: "false"
+    volumes:
+      - api-runtime:/app/runtime
+      - ./data/models:/app/data/models:ro
+      # Monthly TSB workbooks dropped here are imported without an image rebuild.
+      - ./data/reference/kasko:/app/data/reference/kasko:ro
+    depends_on:
+      api:
+        condition: service_healthy
+
   web:
     build:
       context: .
       dockerfile: web/Dockerfile
+    restart: unless-stopped
     depends_on:
       api:
         condition: service_healthy
     ports:
       - "8080:80"
+
+volumes:
+  api-runtime:

@@ -1,15 +1,20 @@
-"""Catalog endpoints sourced from the shipped catalog and real database."""
+"""Catalog endpoints sourced from the shipped catalog and real database.
+
+Only brand, series and model are served. Body type, fuel type and transmission
+are not present on the search-result rows the ingestion layer reads, so an
+endpoint for them would always answer with an empty list.
+"""
 
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, Query
 
-from ..database import ListingRepository, PROJECT_ROOT
+from ..database import ListingRepository
 from ..dependencies import safe_repository
 from ..schemas import CatalogOption, CatalogResponse
+from ..settings import PROJECT_ROOT
 
 router = APIRouter(prefix="/api/catalog", tags=["catalog"])
 CATALOG_PATH = PROJECT_ROOT / "data" / "reference" / "vehicle_catalog.json"
@@ -66,10 +71,3 @@ def models(
     counts = repository.load_listings(db_filters).groupby("model").size().to_dict()
     return CatalogResponse(items=[CatalogOption(name=name, listing_count=int(counts.get(name, 0))) for name in unique(catalog_names + db_names)])
 
-
-@router.get("/options", response_model=CatalogResponse)
-def options(
-    field: str = Query(..., pattern="^(body_type|fuel_type|transmission)$"),
-    repository: ListingRepository = Depends(safe_repository),
-) -> CatalogResponse:
-    return CatalogResponse(items=[CatalogOption(name=name) for name in repository.distinct_values(field)])

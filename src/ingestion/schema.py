@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -69,7 +69,7 @@ class VehicleListing:
         damage_status: str | None = None,
         is_clean_claimed: int = 0,
         scrape_segment: str | None = None,
-    ) -> "VehicleListing":
+    ) -> VehicleListing:
         return cls(
             source=source,
             source_listing_id=source_listing_id,
@@ -97,7 +97,7 @@ class VehicleListing:
             damage_status=damage_status,
             is_clean_claimed=is_clean_claimed,
             scrape_segment=scrape_segment,
-            scraped_at=datetime.now(timezone.utc).isoformat(),
+            scraped_at=datetime.now(UTC).isoformat(),
         )
 
     def to_dict(self) -> dict[str, Any]:

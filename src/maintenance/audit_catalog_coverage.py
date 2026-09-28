@@ -7,10 +7,10 @@ import csv
 import json
 import sqlite3
 from collections import Counter
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable
 
 from src.data_paths import DEFAULT_DB_PATH
 from src.maintenance.clean_vehicle_data import (
@@ -25,7 +25,6 @@ from src.maintenance.clean_vehicle_data import (
     reject_reason,
     table_columns,
 )
-
 
 DEFAULT_OUTPUT_DIR = Path("data") / "runtime" / "coverage_reports"
 

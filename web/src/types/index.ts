@@ -143,4 +143,42 @@ export type ValuationResponse = {
   reference_listing_trend: TrendPoint[];
   condition_adjustment_percent: number | null;
   condition_adjustment_note: string | null;
+  reference_value: ReferenceValue | null;
+  comparable_listings: SimilarListing[];
+  sale_reports: SaleReportSummary | null;
+};
+
+export type SaleReportSummary = { count: number; median_price: number | null; year_window: number };
+
+export type SaleReportRequest = {
+  brand: string;
+  series: string;
+  model?: string;
+  year: number;
+  mileage_km?: number;
+  sale_price: number;
+  sold_month?: string;
+  city?: string;
+  changed_parts?: number;
+  painted_parts?: number;
+};
+
+export type ReferenceValue = {
+  value: number;
+  period: string;
+  source: string;
+  model_year: number;
+  match: "model" | "series";
+  matched_name: string | null;
+  candidate_count: number;
+  market_to_reference_percent: number | null;
+};
+
+export type HealthResponse = {
+  status: string;
+  database_available: boolean;
+  listing_count: number | null;
+  message: string | null;
+  data_sources: string[];
+  demo_data: boolean;
 };

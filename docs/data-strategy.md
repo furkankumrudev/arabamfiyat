@@ -6,16 +6,24 @@ ArabamFiyat.com'un veri stratejisi, kullanıcının seçtiği araç özellikleri
 
 ## Ana Karar
 
-Proje hazır ve eski bir public CSV veri setine bağlı kalmayacaktır. Bunun yerine veri akışı şu şekilde tasarlanmıştır:
+Ürün tek bir veri kaynağına bağlı değildir. Her kaynak aynı ilan şemasını üretir ve aynı hattan geçer:
 
 ```text
-İzinli veri güncelleme akışı
-  -> SQLite kayıt katmanı
+Kaynak (demo | CSV | ileride partner API)
+  -> SQLite ham ilan tablosu
   -> cleaning hattı
-  -> araç özellikleri formu
   -> benzer ilan filtreleme
   -> fiyat dağılımı ve piyasa aralığı
 ```
+
+Kaynaklar `src/ingestion/sources/` altında, `ListingSource` arayüzünü uygular. Yeni bir kaynak eklemek analiz, API veya arayüzde değişiklik gerektirmez.
+
+| Kaynak | Durum | Not |
+| --- | --- | --- |
+| Demo | Hazır | Sentetik, deterministik; herkesin projeyi veri olmadan çalıştırabilmesi için |
+| CSV | Hazır | Kullanım izni olan her veri: partner dışa aktarımı, lisanslı veri seti, elle toplanan ilanlar |
+| TSB kasko listesi | Hazır (aktarım) | Resmi, aylık, otomatikleştirilebilir sigorta referans değeri; ilan fiyatıyla karıştırılmaz |
+| Partner / resmi API | Planlı | Aynı arayüzle eklenecek |
 
 ## Katalog Verisi
 
@@ -25,9 +33,7 @@ Bu dosya statik bir eğitim datası değildir; yalnızca kullanıcı deneyimini 
 
 ## Güncel İlan Verisi
 
-Veri alma modülü, günlük veya periyodik bakım akışında yeni ilanları SQLite veritabanına yazar. Kullanıcı arayüzü tarayıcı açmaz; yalnızca temizlenmiş mevcut ilan verisini analiz eder.
-
-Varsayılan lokal veritabanı:
+Kullanıcı arayüzü veri toplamaz; yalnızca veritabanındaki temizlenmiş ilanları analiz eder. Varsayılan lokal veritabanı:
 
 ```text
 data/runtime/vehicle_listings.sqlite3
@@ -35,7 +41,9 @@ data/runtime/vehicle_listings.sqlite3
 
 ## Sorumlu Kullanım
 
-Canlı ilan sitelerinden veri toplama teknik ve hukuki riskler içerebilir. Bu nedenle proje anlatımında veri toplama katmanı; kontrollü prototip, izinli veri kaynakları, resmi API veya partner veri akışlarına uyarlanabilir mimari olarak konumlandırılır.
+İlk prototipte ilanlar sahibinden.com'dan tarayıcıyla toplanıyordu. Bu yöntem kaynağın kullanım koşullarıyla çelişir, elle erişim doğrulaması gerektirdiği için otomatikleştirilemez ve site değiştikçe bozulur. Bu nedenle ürünün parçası olmaktan çıkarıldı; kod `src/experimental/sahibinden/` altında yalnızca araştırma prototipi olarak duruyor.
+
+Sentetik demo verisi `source = demo` olarak saklanır, gerçek veriyle aynı veritabanına yüklenemez ve arayüzde her zaman etiketlenir.
 
 ## MVP Değeri
 

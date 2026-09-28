@@ -238,3 +238,8 @@ data/models/
 
 # Local delivery artifacts
 deliverables/
+
+# Kasko reference workbooks are data, not source.
+data/reference/kasko/*.xlsx
+data/reference/kasko/*.xlsm
+data/reference/kasko/*.csv

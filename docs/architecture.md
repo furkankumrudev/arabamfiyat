@@ -2,6 +2,8 @@
 
 ```mermaid
 flowchart LR
+    Sources[Kaynaklar: demo, CSV, partner] --> Raw[(Ham ilan tablosu)]
+    Raw --> Clean[Temizleme hattı] --> CleanDB
     User[Kullanıcı] --> Web[React + TypeScript]
     Web --> API[FastAPI]
     API --> Engine[Piyasa Analiz Motoru]
@@ -16,6 +18,9 @@ flowchart LR
 
 | Katman | Konum | Sorumluluk |
 | --- | --- | --- |
+| Veri kaynakları | `src/ingestion/sources/` | Demo ve CSV kaynakları; hepsi aynı `ListingSource` arayüzünü uygular |
+| Veri yükleme | `src/ingestion/load_listings.py` | Kaynağı ham tabloya yazar, demo ile gerçek veriyi karıştırmaz, hattı çalıştırır |
+| Kasko referansı | `src/api/services/reference_service.py` | Değerlemedeki araca TSB kasko değerini eşleştirir |
 | Web arayüzü | `web/` | Kullanıcıdan araç bilgilerini almak ve piyasa sonucunu görselleştirmek |
 | API | `src/api/` | Tip güvenli endpointler, veri erişimi ve servis koordinasyonu |
 | Piyasa motoru | `src/analysis/market_engine.py` | Benzerlik puanlama, uç fiyat temizleme ve fiyat aralığı |
@@ -34,4 +39,6 @@ flowchart LR
 
 ## Yerel Çalışma Sınırı
 
-SQLite verisi ve model artefaktı repoya dahil edilmez. Bunlar kişisel veri içermeyen yerel çalışma çıktıları olarak tutulur. Uygulama veri bulunmadığında açık bir durum mesajı verir; sahte piyasa verisi üretmez.
+SQLite verisi ve model artefaktı repoya dahil edilmez. Bunlar kişisel veri içermeyen yerel çalışma çıktıları olarak tutulur. Veri yoksa sentetik demo verisi yüklenebilir; bu veri `source = demo` olarak saklanır ve arayüzde her zaman "Demo verisi" olarak etiketlenir.
+
+`src/experimental/` altındaki kod ürünün parçası değildir; hiçbir ürün modülü onu içe aktarmaz.

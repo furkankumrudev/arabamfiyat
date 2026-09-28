@@ -1,13 +1,73 @@
-import { BadgePercent, CalendarRange, Gauge, Sparkles } from "lucide-react";
+import { AlertTriangle, BadgePercent, CalendarRange, ExternalLink, Gauge, HandCoins, ListChecks, ShieldCheck, Sparkles } from "lucide-react";
 import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
 import type { ReferenceMileagePoint, ReferencePricePoint, TrendPoint, ValuationResponse } from "../types";
 import { money, number, percent } from "../utils/format";
 import { EmptyState } from "./StatePanels";
+import { useChartColors } from "../theme";
 
 function ConditionAdjustmentCard({ data }: { data: ValuationResponse }) {
-  if (data.condition_adjustment_percent == null) return null;
+  // Entered damage that could not be applied must be visible, not silently dropped.
+  if (data.condition_adjustment_percent == null) {
+    if (!data.condition_adjustment_note) return null;
+    return <div className="condition-adjustment-card"><div><span className="eyebrow"><BadgePercent size={14} />DURUM ETKİSİ</span><strong>Hesaba katılmadı</strong></div><p>{data.condition_adjustment_note} Gösterilen değer boya ve değişen durumunu içermez.</p></div>;
+  }
   const unchanged = data.condition_adjustment_percent === 0;
   return <div className="condition-adjustment-card"><div><span className="eyebrow"><BadgePercent size={14} />DURUM ETKİSİ</span><strong>{unchanged ? "Referans durum" : percent(data.condition_adjustment_percent)}</strong></div><p>{data.condition_adjustment_note}</p></div>;
+}
+
+const MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+const formatPeriod = (period: string) => {
+  const [year, month] = period.split("-").map(Number);
+  return month ? `${MONTHS[month - 1]} ${year}` : period;
+};
+
+function ReferenceValueCard({ data }: { data: ValuationResponse }) {
+  const reference = data.reference_value;
+  if (!reference) return null;
+  const demo = reference.source === "demo";
+  const ratio = reference.market_to_reference_percent;
+  const matchText = reference.match === "model"
+    ? `Paket eşleşmesi: ${reference.matched_name}`
+    : `Serinin ${reference.model_year} model ${number(reference.candidate_count)} paketinin medyanı (paket bazında eşleşme yok)`;
+  return <div className="reference-value-card">
+    <div>
+      <span className="eyebrow"><ShieldCheck size={14} />{demo ? "DEMO KASKO DEĞERİ" : "TSB KASKO DEĞERİ"} · {formatPeriod(reference.period)}</span>
+      <strong>{money(reference.value)}</strong>
+    </div>
+    <p>{matchText}.{ratio != null && <> İlan piyasası bu değerin <b>%{Math.round(ratio)}</b> seviyesinde.</>}</p>
+    <small>{demo ? "Sentetik demo listesinden üretildi. " : ""}Sigorta referans değeridir; ilan veya satış fiyatı değildir.</small>
+  </div>;
+}
+
+function SaleReportsCard({ data }: { data: ValuationResponse }) {
+  const reports = data.sale_reports;
+  if (!reports || reports.count === 0) return null;
+  const yearWindow = `±${reports.year_window} model yılı`;
+  return <div className="reference-value-card sale-reports-card">
+    <div><span className="eyebrow"><HandCoins size={14} />KULLANICI SATIŞLARI</span><strong>{reports.median_price != null ? money(reports.median_price) : `${number(reports.count)} bildirim`}</strong></div>
+    <p>{reports.median_price != null
+      ? <>Kullanıcıların bildirdiği {number(reports.count)} gerçek satışın medyanı ({yearWindow}).</>
+      : <>Bu araç için {number(reports.count)} satış bildirildi; gizlilik için medyan en az 3 bildirimde gösterilir.</>}</p>
+    <small>İlan fiyatı değil, kullanıcıların beyan ettiği satış fiyatıdır; doğrulanmamıştır.</small>
+  </div>;
+}
+
+function ComparableListings({ data }: { data: ValuationResponse }) {
+  const items = data.comparable_listings ?? [];
+  if (!items.length) return null;
+  const value = data.estimated_market_value;
+  return <section className="comparable-listings">
+    <div className="comparison-heading"><div><span className="eyebrow"><ListChecks size={14} />DAYANAK İLANLAR</span><h3>Bu değere en yakın ilanlar</h3></div><p>Değerlemeye giren ilanlardan aracınıza en çok benzeyen {number(items.length)} tanesi, gerçek ilan fiyatlarıyla.</p></div>
+    <ul>{items.map((item, index) => {
+      const delta = value ? (item.price - value) / value * 100 : null;
+      const details = [item.year, item.mileage_km != null ? `${number(item.mileage_km)} km` : null, item.city, item.listing_date].filter(Boolean).join(" · ");
+      return <li key={item.id ?? index}>
+        <div><strong>{item.title}</strong><span>{details}</span></div>
+        <div className="comparable-price"><b>{money(item.price)}</b>{delta != null && <small className={Math.abs(delta) < 0.5 ? "" : delta > 0 ? "above" : "below"}>{percent(delta)} tahmine göre</small>}</div>
+        {item.listing_url ? <a href={item.listing_url} target="_blank" rel="noreferrer" aria-label={`${item.title} ilanını aç`}><ExternalLink size={15} /></a> : <span className="comparable-link-placeholder" />}
+      </li>;
+    })}</ul>
+  </section>;
 }
 
 function ComparisonSummary({ data }: { data: ValuationResponse }) {
@@ -29,7 +89,7 @@ function ComparisonSummary({ data }: { data: ValuationResponse }) {
 }
 
 function MarketRangeCard({ data }: { data: ValuationResponse }) {
-  return <div className="range-card">
+  return <div className={`range-card${data.status === "low_sample" ? " leading" : ""}`}>
     <p>Önerilen piyasa aralığı</p>
     <strong>{money(data.recommended_low_price)} — {money(data.recommended_high_price)}</strong>
     <div className="range-card-details">
@@ -57,6 +117,7 @@ function PriceScatterTooltip({ active, payload }: { active?: boolean; payload?: 
 }
 
 function PriceDistribution({ data }: { data: ValuationResponse }) {
+  const c = useChartColors();
   const points = data.reference_price_points ?? [];
   const low = data.recommended_low_price;
   const median = data.median_price;
@@ -90,15 +151,15 @@ function PriceDistribution({ data }: { data: ValuationResponse }) {
     <div className="price-strip-chart" aria-label="Benzer ilanların etkileşimli nokta dağılımı grafiği">
       <ResponsiveContainer width="100%" height="100%">
         <ScatterChart margin={{ top: 24, right: 20, left: 4, bottom: 8 }}>
-          <CartesianGrid vertical={false} stroke="#e7edf5" strokeDasharray="3 4" />
+          <CartesianGrid vertical={false} stroke={c.grid} strokeDasharray="3 4" />
           <XAxis type="number" dataKey="price" domain={[Math.max(0, minimum - padding), maximum + padding]} tickFormatter={compactPrice} tickLine={false} axisLine={false} minTickGap={34} />
           <YAxis type="number" dataKey="lane" domain={[0, laneCount + 1]} hide />
-          <Tooltip cursor={{ stroke: "#b9c9df", strokeDasharray: "3 3" }} content={<PriceScatterTooltip />} />
-          <ReferenceArea x1={low} x2={high} y1={0} y2={laneCount + 1} fill="#dff2e9" fillOpacity={0.72} />
-          <ReferenceLine x={median} stroke="#123154" strokeWidth={2} />
-          {data.asking_price != null && <ReferenceLine x={data.asking_price} stroke="#e8692e" strokeWidth={2} strokeDasharray="5 4" />}
-          <Scatter data={outsideRange} fill="#78a7f5" />
-          <Scatter data={insideRange} fill="#16875b" />
+          <Tooltip cursor={{ stroke: c.muted, strokeDasharray: "3 3" }} content={<PriceScatterTooltip />} />
+          <ReferenceArea x1={low} x2={high} y1={0} y2={laneCount + 1} fill={c.range} fillOpacity={0.72} />
+          <ReferenceLine x={median} stroke={c.median} strokeWidth={2} />
+          {data.asking_price != null && <ReferenceLine x={data.asking_price} stroke={c.asking} strokeWidth={2} strokeDasharray="5 4" />}
+          <Scatter data={outsideRange} fill={c.highlight} />
+          <Scatter data={insideRange} fill={c.clean} />
         </ScatterChart>
       </ResponsiveContainer>
     </div>
@@ -136,6 +197,7 @@ function shortDate(value: string) {
 }
 
 function ReferenceInsights({ data }: { data: ValuationResponse }) {
+  const c = useChartColors();
   const mileageData: ReferenceMileageChartPoint[] = (data.reference_mileage_points ?? []).map((point) => ({
     ...point,
     label: `${Math.round(point.lower_mileage_km / 1_000)}-${Math.round(point.upper_mileage_km / 1_000)} bin km`,
@@ -149,11 +211,11 @@ function ReferenceInsights({ data }: { data: ValuationResponse }) {
       <div className="reference-chart-wrap">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={mileageData} margin={{ top: 22, right: 18, left: 4, bottom: 8 }}>
-            <CartesianGrid vertical={false} stroke="#e7edf5" strokeDasharray="3 4" />
+            <CartesianGrid vertical={false} stroke={c.grid} strokeDasharray="3 4" />
             <XAxis dataKey="label" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={28} />
-            <YAxis tickFormatter={compactPrice} tickLine={false} axisLine={false} width={52} />
-            <Tooltip cursor={{ stroke: "#b9c9df", strokeDasharray: "3 3" }} content={<ReferenceMileageTooltip />} />
-            <Line type="monotone" dataKey="median_price" name="Medyan fiyat" stroke="#16875b" strokeWidth={3} dot={{ r: 4, fill: "#fff", strokeWidth: 3 }} activeDot={{ r: 6 }} />
+            <YAxis tickFormatter={compactPrice} tickLine={false} axisLine={false} width={76} />
+            <Tooltip cursor={{ stroke: c.muted, strokeDasharray: "3 3" }} content={<ReferenceMileageTooltip />} />
+            <Line type="monotone" dataKey="median_price" name="Medyan fiyat" stroke={c.clean} strokeWidth={3} dot={{ r: 4, fill: c.dotFill, strokeWidth: 3 }} activeDot={{ r: 6 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -163,11 +225,11 @@ function ReferenceInsights({ data }: { data: ValuationResponse }) {
       <div className="reference-chart-wrap">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={trendData} margin={{ top: 22, right: 18, left: 4, bottom: 8 }}>
-            <CartesianGrid vertical={false} stroke="#e7edf5" strokeDasharray="3 4" />
+            <CartesianGrid vertical={false} stroke={c.grid} strokeDasharray="3 4" />
             <XAxis dataKey="label" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={28} />
-            <YAxis tickFormatter={compactPrice} tickLine={false} axisLine={false} width={52} />
-            <Tooltip cursor={{ stroke: "#b9c9df", strokeDasharray: "3 3" }} content={<ReferenceTrendTooltip />} />
-            <Line type="monotone" dataKey="median_price" name="Günlük medyan fiyat" stroke="#2563eb" strokeWidth={3} dot={{ r: 4, fill: "#fff", strokeWidth: 3 }} activeDot={{ r: 6 }} />
+            <YAxis tickFormatter={compactPrice} tickLine={false} axisLine={false} width={76} />
+            <Tooltip cursor={{ stroke: c.muted, strokeDasharray: "3 3" }} content={<ReferenceTrendTooltip />} />
+            <Line type="monotone" dataKey="median_price" name="Günlük medyan fiyat" stroke={c.all} strokeWidth={3} dot={{ r: 4, fill: c.dotFill, strokeWidth: 3 }} activeDot={{ r: 6 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -177,13 +239,29 @@ function ReferenceInsights({ data }: { data: ValuationResponse }) {
 
 export function ValuationResult({ data }: { data: ValuationResponse | null }) {
   if (!data) return <div className="valuation-placeholder"><Sparkles size={26} /><strong>Aracınızın piyasa değerini hesaplayın</strong><p>Seçtiğiniz kriterlerle eşleşen gerçek ilanlardan bir tahmin oluşturacağız.</p></div>;
-  if (data.status === "empty") return <EmptyState title="Güncel piyasa karşılaştırması oluşmadı" detail={data.explanation} />;
+  // Without comparable listings the kasko value is still a useful anchor.
+  if (data.status === "empty") return <><EmptyState title="Güncel piyasa karşılaştırması oluşmadı" detail={data.explanation} />{data.reference_value && <div className="valuation-result"><ReferenceValueCard data={data} /></div>}</>;
+  // The engine reports "low_sample" when the reference group is below its own
+  // minimum. Showing that estimate at full visual weight would contradict the
+  // warning printed underneath it, so the range leads instead.
+  const lowSample = data.status === "low_sample";
   return <section className="valuation-result">
-    <div className="result-hero"><span className="eyebrow">TAHMİNİ PİYASA DEĞERİ</span><strong>{money(data.estimated_market_value)}</strong><p>Güncel ilan verisi · {data.confidence} güven</p></div>
+    <div className={`result-hero${lowSample ? " low-confidence" : ""}`}>
+      <span className="eyebrow">TAHMİNİ PİYASA DEĞERİ</span>
+      <strong>{money(data.estimated_market_value)}</strong>
+      <p>Güncel ilan verisi · {data.confidence} güven</p>
+      {lowSample && <p className="result-hero-warning">
+        <AlertTriangle size={15} />
+        <span>Bu tahmin yalnızca {number(data.listing_count)} ilana dayanıyor. Tek bir sayı yerine yanındaki önerilen aralığı dikkate alın.</span>
+      </p>}
+    </div>
     <MarketRangeCard data={data} />
     <ConditionAdjustmentCard data={data} />
+    <ReferenceValueCard data={data} />
+    <SaleReportsCard data={data} />
     <ComparisonSummary data={data} />
     <PriceDistribution data={data} />
+    <ComparableListings data={data} />
     <ReferenceInsights data={data} />
   </section>;
 }

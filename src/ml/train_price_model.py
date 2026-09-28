@@ -6,15 +6,14 @@ import argparse
 import json
 import math
 import unicodedata
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Sequence
 
 import numpy as np
 import pandas as pd
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
-
 
 TARGET_COLUMN = "fiyat"
 CATEGORICAL_FEATURES = (
@@ -209,7 +208,7 @@ def train_model(
     feature_importance = sorted(
         (
             {"feature": feature, "importance": float(importance)}
-            for feature, importance in zip(FEATURE_COLUMNS, model.get_feature_importance())
+            for feature, importance in zip(FEATURE_COLUMNS, model.get_feature_importance(), strict=True)
         ),
         key=lambda item: item["importance"],
         reverse=True,

@@ -24,15 +24,16 @@ def get_overview(filters: MarketFilters = Depends(), repository: ListingReposito
 def get_trend(
     filters: MarketFilters = Depends(), start_date: date | None = None, end_date: date | None = None,
     repository: ListingRepository = Depends(safe_repository),
+    interval: str = Query(default="day", pattern="^(day|week)$"),
 ) -> TrendResponse:
     if start_date and end_date and start_date > end_date:
         return TrendResponse(available=False, message="Başlangıç tarihi bitiş tarihinden büyük olamaz.")
     listings = repository.load_listings(filters.as_dict())
-    points = build_listing_trend(listings, start_date, end_date)
+    points = build_listing_trend(listings, start_date, end_date, interval)
     if len(points) < 2:
         return TrendResponse(available=False, message="Bu dönem için yeterli geçmiş veri bulunmuyor.")
     clean_listings = listings[listings["is_clean_claimed"].fillna(0).astype(int) == 1] if "is_clean_claimed" in listings else listings.iloc[0:0]
-    clean_points = build_listing_trend(clean_listings, start_date, end_date)
+    clean_points = build_listing_trend(clean_listings, start_date, end_date, interval)
     return TrendResponse(
         available=True,
         points=merge_clean_trend(points, clean_points),

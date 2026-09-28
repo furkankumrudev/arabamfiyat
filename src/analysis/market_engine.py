@@ -219,12 +219,13 @@ class MarketAnalysisEngine:
         return selected, "Yakınlık aralığı: " + " · ".join(criteria)
 
     def _confidence_label(self, count: int) -> str:
+        # These reach the user as written, so they carry their diacritics.
         if count >= 50:
-            return "Yuksek"
+            return "Yüksek"
         if count >= 20:
             return "Orta"
         if count >= self.config.min_sample_size:
-            return "Dusuk"
+            return "Düşük"
         return "Yetersiz"
 
     def _compare_user_price(self, summary: dict[str, float | int], user_price: int | None) -> tuple[str | None, float | None]:

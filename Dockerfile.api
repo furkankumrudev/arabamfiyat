@@ -14,6 +14,8 @@ COPY requirements-api.txt .
 RUN pip install --requirement requirements-api.txt
 
 COPY src ./src
+# The catalog feeds the API dropdowns and the cleaning step; both read it at runtime.
+COPY data/reference ./data/reference
 COPY scripts/container-entrypoint.sh /usr/local/bin/container-entrypoint
 
 RUN chmod +x /usr/local/bin/container-entrypoint

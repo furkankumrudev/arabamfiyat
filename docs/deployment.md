@@ -5,10 +5,30 @@ Bu yapı, React arayüzü ve FastAPI servisinin tek bir yerel adres altında ça
 ## Gereksinimler
 
 - Docker Desktop
-- Yerel izinli SQLite veritabanı: `data/runtime/vehicle_listings.sqlite3`
+- Opsiyonel izinli SQLite veritabanı: `data/runtime/vehicle_listings.sqlite3` (yoksa demo verisi kullanılır)
 - Opsiyonel kondisyon etkisi modeli: `data/models/kaggle_price_effect/kaggle_price_effect_model.cbm`
 
-Veritabanı konteynere salt okunur kaynak olarak bağlanır ve Git'e eklenmez. Başlangıçta konteynerin geçici çalışma alanına kopyalanır; bu, Windows bind mount'larında SQLite dosya kilitleme sorunlarını önler. Veritabanı yoksa API health kontrolü başarısız olur; bu, sahte piyasa verisiyle açılmaktan daha güvenlidir.
+Veritabanı konteynere salt okunur kaynak olarak bağlanır ve Git'e eklenmez. İlk açılışta `api-runtime` adlı kalıcı volume'e kopyalanır; bu, Windows bind mount'larında SQLite dosya kilitleme sorunlarını önler. Volume dolu olduğunda tohumlama tekrarlanmaz, böylece biriken günlük snapshot'lar ve temizlenmiş tablo yeniden başlatmalarda korunur. Tohumu bilerek tazelemek için `RESEED_DB=1` kullanılır. Veritabanı yoksa API ilk açılışta sentetik demo verisini üretir ve yükler. `/api/health` bunu `demo_data: true` olarak bildirir, arayüz de her sayfada "Demo verisi" uyarısı gösterir; sentetik fiyatlar gerçek piyasa gibi sunulmaz. Boş başlatmak için `DEMO_DATA=0 docker compose up` kullanılır.
+
+## Servisler
+
+| Servis | Görev |
+| --- | --- |
+| `api` | FastAPI; veritabanını yalnızca okur |
+| `scheduler` | Günlük bakım hattını çalıştırır; veritabanına yazan tek servis |
+| `web` | Nginx üzerinde React arayüzü |
+
+`scheduler`, `api` ile aynı imajı ve aynı `api-runtime` volume'unu kullanır. Tek yazar / çok okuyan bu düzen SQLite için güvenlidir.
+
+### Zamanlama ayarları
+
+| Değişken | Varsayılan | Açıklama |
+| --- | --- | --- |
+| `PIPELINE_HOUR` | `3` | Günlük çalıştırma saati (UTC) |
+| `PIPELINE_MINUTE` | `0` | Günlük çalıştırma dakikası (UTC) |
+| `PIPELINE_RUN_ON_START` | `false` | Konteyner açılışında bir kez hemen çalıştır |
+
+İlan toplama adımı bu hatta bilinçli olarak dahil değildir: tarayıcı sürüyor ve manuel erişim doğrulaması isteyebiliyor, bu yüzden operatör komutu olarak kalır.
 
 ## Çalıştırma
 
@@ -42,3 +62,36 @@ docker compose up --build
 ```
 
 Ardından web ekranından araç değerleme akışı ve `http://localhost:8080/api/health` endpointi doğrulanmalıdır.
+
+Health yanıtı veri akışının durumunu da bildirir:
+
+```json
+{
+  "status": "ok",
+  "database_available": true,
+  "listing_count": 12345,
+  "last_pipeline_success_at": "2026-09-21T03:00:12+00:00",
+  "pipeline_age_hours": 6.4,
+  "pipeline_stale": false
+}
+```
+
+`status` alanı, hat 36 saatten uzun süredir başarıyla tamamlanmadıysa `degraded` olur. Hat hiç çalışmadıysa üç alan da `null` döner; sistem tahminde bulunmaz. Bu, durmuş bir veri akışının "sağlıklı" görünmesini engeller.
+
+## Tek konteyner (canlı demo)
+
+Kök dizindeki `Dockerfile`, React arayüzünü derleyip API'nin içinden sunar; tek bir servis yeterlidir. Barındırma servisinin verdiği `PORT` değişkenini dinler (yoksa 8000). Veritabanı yoksa açılışta demo verisini üretir. Konteynerin diski kalıcı değilse bu her açılışta tekrarlanır; demo tarihleri de böylece hep güncel kalır.
+
+```bash
+docker build -t arabamfiyat-demo .
+docker run -p 8000:8000 arabamfiyat-demo
+```
+
+Render için [`render.yaml`](../render.yaml) hazırdır: *New → Blueprint* ile repoyu bağlamak yeterlidir.
+
+| Değişken | Varsayılan | Anlamı |
+| --- | --- | --- |
+| `PORT` | `8000` | Dinlenecek port |
+| `DEMO_DATA` | `1` | Veritabanı yoksa demo verisi yükle; `0` boş başlatır |
+| `SQLITE_DB_PATH` | `/app/runtime/vehicle_listings.sqlite3` | Veritabanı yolu; kalıcı bir diske yönlendirilebilir |
+| `WEB_DIST_DIR` | `/app/web-dist` | API'nin sunduğu derlenmiş arayüz |

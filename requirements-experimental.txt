@@ -1,0 +1,6 @@
+# Optional: the experimental sahibinden.com research scraper (src/experimental/).
+# The product does not need these packages.
+-r requirements-api.txt
+
+beautifulsoup4==4.15.0
+nodriver==0.50.3

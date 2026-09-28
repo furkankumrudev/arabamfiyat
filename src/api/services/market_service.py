@@ -9,9 +9,10 @@ from typing import Any
 import pandas as pd
 
 from src.analysis.market_engine import build_market_analysis
-from src.ml.predict_price_model import ConditionAdjustment, DEFAULT_MODEL_PATH, estimate_condition_adjustment
+from src.ml.predict_price_model import DEFAULT_MODEL_PATH, ConditionAdjustment, estimate_condition_adjustment
 
 from ..database import ListingRepository
+from ..services.reference_service import lookup_reference_value
 from ..services.trend_service import build_listing_trend, snapshot_changes, unavailable_changes
 
 MIN_RELATIONSHIP_SAMPLE = 3
@@ -73,13 +74,19 @@ def grouped_table(repository: ListingRepository, filters: dict[str, Any], group_
     grouped = frame.groupby(column, as_index=False).agg(
         average_price=("price", "mean"), median_price=("price", "median"), listing_count=("price", "count")
     ).sort_values(["listing_count", "median_price"], ascending=[False, False]).head(100)
-    return [
-        {
-            "label": str(row[0]), "average_price": float(row[1]), "median_price": float(row[2]),
-            "listing_count": int(row[3]), "change_30d": None, "change_90d": None, "change_yoy": None,
-        }
-        for row in grouped.itertuples(index=False, name=None)
-    ]
+    # Snapshots summarise each brand over all of its listings, so their changes
+    # only describe a row when no other filter narrows it.
+    active = {key for key, value in filters.items() if value is not None and value != ""}
+    with_changes = column == "brand" and active <= {"brand"}
+    rows = []
+    with closing(repository.connect()) as connection:
+        for label, average, median, count in grouped.itertuples(index=False, name=None):
+            changes = snapshot_changes(connection, "brand", str(label)) if with_changes else unavailable_changes()
+            rows.append({
+                "label": str(label), "average_price": float(average), "median_price": float(median),
+                "listing_count": int(count), **changes,
+            })
+    return rows
 
 
 def build_price_relationships(listings: pd.DataFrame) -> dict[str, list[dict[str, object]]]:
@@ -89,7 +96,7 @@ def build_price_relationships(listings: pd.DataFrame) -> dict[str, list[dict[str
 
     year_points: list[dict[str, object]] = []
     if "year" in listings:
-        years = listings.dropna(subset=["year"]).copy()
+        years = listings[["year", "price"]].dropna(subset=["year"])
         years["year"] = pd.to_numeric(years["year"], errors="coerce")
         years = years[years["year"].between(1950, 2100)]
         grouped_years = years.groupby("year", as_index=False).agg(
@@ -103,7 +110,7 @@ def build_price_relationships(listings: pd.DataFrame) -> dict[str, list[dict[str
 
     mileage_points: list[dict[str, object]] = []
     if "mileage_km" in listings:
-        mileages = listings.dropna(subset=["mileage_km"]).copy()
+        mileages = listings[["mileage_km", "price"]].dropna(subset=["mileage_km"])
         mileages["mileage_km"] = pd.to_numeric(mileages["mileage_km"], errors="coerce")
         mileages = mileages[mileages["mileage_km"] >= 0]
         for minimum, maximum, label in MILEAGE_BANDS:
@@ -123,6 +130,8 @@ def build_price_relationships(listings: pd.DataFrame) -> dict[str, list[dict[str
 
 def price_relationships(repository: ListingRepository, filters: dict[str, Any]) -> dict[str, object]:
     listings = repository.load_listings(filters)
+    # Only these columns matter here; slicing first keeps the work off the full table.
+    listings = listings[[column for column in ("year", "mileage_km", "price", "is_clean_claimed") if column in listings]]
     points = build_price_relationships(listings)
     clean_listings = listings[listings.get("is_clean_claimed", 0).fillna(0).astype(int) == 1] if "is_clean_claimed" in listings else listings.iloc[0:0]
     clean_points = build_price_relationships(clean_listings)
@@ -176,12 +185,15 @@ def movers(repository: ListingRepository, direction: str) -> list[dict[str, obje
 
 def condition_adjustment_from_payload(payload: dict[str, Any]) -> tuple[ConditionAdjustment | None, str | None]:
     """Estimate only the paint/change discount, never a second standalone price."""
-    required = ("brand", "series", "model", "year", "mileage_km")
-    if any(payload.get(field) in (None, "") for field in required):
-        return None, None
     changed_parts = payload.get("changed_parts")
     painted_parts = payload.get("painted_parts")
     if changed_parts is None and painted_parts is None:
+        return None, None
+    required = ("brand", "series", "model", "year", "mileage_km")
+    if any(payload.get(field) in (None, "") for field in required):
+        # Say so when the user described damage, rather than dropping it silently.
+        if changed_parts or painted_parts:
+            return None, "Boya ve değişen etkisi hesaplanamadı: araç grubunda paket, yıl veya kilometre bilgisi bulunamadı."
         return None, None
     if not DEFAULT_MODEL_PATH.exists():
         return None, "Boya ve değişen etkisi modeli henüz eğitilmemiş."
@@ -233,9 +245,16 @@ def enrich_condition_payload(
             enriched["mileage_km"] = int(mileages.median())
             used_fields.append("kilometre")
 
-    if not used_fields:
-        return enriched, None
-    return enriched, f"{', '.join(used_fields).capitalize()} girilmediği için referans ilan grubunun medyanı kullanıldı."
+    notes: list[str] = []
+    if used_fields:
+        notes.append(f"{', '.join(used_fields).capitalize()} girilmediği için referans ilan grubunun medyanı kullanıldı.")
+    if not enriched.get("model") and "model" in reference_listings:
+        packages = reference_listings["model"].dropna().astype(str).str.strip()
+        packages = packages[packages.ne("")]
+        if not packages.empty:
+            enriched["model"] = str(packages.mode().iloc[0])
+            notes.append(f"Paket seçilmediği için grupta en sık görülen paket ({enriched['model']}) kullanıldı.")
+    return enriched, " ".join(notes) or None
 
 
 def _assess_asking_price(market_value: float, asking_price: int | None) -> tuple[str | None, float | None]:
@@ -355,6 +374,7 @@ def valuation(repository: ListingRepository, payload: dict[str, Any]) -> dict[st
         for key in ("brand", "series", "model", "year_min", "year_max", "mileage_max", "clean_only")
     }
     listings = repository.load_listings(filters)
+    reference = reference_value(repository, payload)
     result = build_market_analysis(
         listings, target_year=payload.get("year"), target_mileage=payload.get("mileage_km"),
         selected_model=payload.get("model"), user_price=payload.get("asking_price"),
@@ -371,10 +391,12 @@ def valuation(repository: ListingRepository, payload: dict[str, Any]) -> dict[st
         return {
             "status": "empty", "listing_count": 0,
             "explanation": detail,
+            "reference_value": reference,
         }
     condition_payload, fallback_note = enrich_condition_payload(payload, result["used_listings"])
     adjustment, adjustment_note = condition_adjustment_from_payload(condition_payload)
-    if adjustment_note and fallback_note:
+    # The substituted year, mileage or package only matters when an adjustment was made.
+    if adjustment is not None and adjustment_note and fallback_note:
         adjustment_note = f"{adjustment_note} {fallback_note}"
     summary = result["summary"]
     comparison_summary = build_comparison_summary(
@@ -423,7 +445,33 @@ def valuation(repository: ListingRepository, payload: dict[str, Any]) -> dict[st
         "reference_listing_trend": reference_listing_trend,
         "condition_adjustment_percent": adjustment.percent if adjustment else None,
         "condition_adjustment_note": adjustment_note,
+        "reference_value": _with_market_ratio(reference, market_value),
+        "comparable_listings": comparable_listings(result["used_listings"]),
     }
+
+
+def reference_value(repository: ListingRepository, payload: dict[str, Any]) -> dict[str, object] | None:
+    """The kasko reference value needs a model year; without one there is nothing to look up."""
+    if payload.get("year") is None:
+        return None
+    with closing(repository.connect()) as connection:
+        return lookup_reference_value(
+            connection, payload.get("brand"), payload.get("series"), payload.get("model"), payload.get("year"),
+        )
+
+
+def _with_market_ratio(reference: dict[str, object] | None, market_value: float) -> dict[str, object] | None:
+    if not reference or not reference.get("value"):
+        return reference
+    return {**reference, "market_to_reference_percent": market_value / float(reference["value"]) * 100}
+
+
+def comparable_listings(used_listings: pd.DataFrame, limit: int = 10) -> list[dict[str, object]]:
+    """The listings this valuation rests on, closest match first, at their real asking price."""
+    if used_listings.empty:
+        return []
+    ordered = used_listings.sort_values("similarity_score", ascending=False) if "similarity_score" in used_listings else used_listings
+    return serialize_listings(ordered, limit=limit)
 
 
 def serialize_listings(frame: pd.DataFrame, limit: int = 12) -> list[dict[str, object]]:

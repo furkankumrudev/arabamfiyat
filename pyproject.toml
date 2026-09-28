@@ -1,0 +1,25 @@
+[project]
+name = "arabamfiyat"
+version = "0.1.0"
+description = "Veri destekli ikinci el arac fiyat karar destek uygulamasi"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = [".venv", "web", "data"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
+ignore = [
+    # The project keeps long, readable dict/series expressions on one line.
+    "E501",
+]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI declares dependencies and query validation in argument defaults.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.Body"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests build throwaway objects and long fixture rows on purpose.
+"tests/*" = ["B008"]

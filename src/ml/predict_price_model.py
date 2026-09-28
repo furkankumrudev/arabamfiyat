@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from .train_price_model import CATEGORICAL_FEATURES, FEATURE_COLUMNS, NUMERIC_FEATURES, normalize_text
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_MODEL_PATH = PROJECT_ROOT / "data/models/kaggle_price_effect/kaggle_price_effect_model.cbm"

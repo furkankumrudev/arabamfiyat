@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 import sqlite3
 import tempfile
+import time
 import unittest
 from contextlib import closing
 from datetime import date
@@ -10,7 +12,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.analysis.market_engine import build_market_analysis
-from src.api.database import DatabaseUnavailable, ListingRepository
+from src.api.database import DatabaseUnavailable, ListingRepository, ensure_snapshot_table
 from src.api.dependencies import MarketFilters
 from src.api.routes.market import get_movers, get_overview, get_trend
 from src.api.routes.valuation import create_valuation
@@ -18,10 +20,12 @@ from src.api.schemas import ValuationRequest
 from src.api.services.market_service import (
     _snapshot_scope,
     build_price_relationships,
-    enrich_condition_payload,
-    build_reference_price_points,
     build_reference_listing_trend,
     build_reference_mileage_points,
+    build_reference_price_points,
+    condition_adjustment_from_payload,
+    enrich_condition_payload,
+    grouped_table,
 )
 from src.api.services.trend_service import build_listing_trend
 from src.maintenance.save_market_snapshot import save_snapshot
@@ -59,6 +63,17 @@ class ApiServiceTests(unittest.TestCase):
         trend = build_listing_trend(frame)
         self.assertEqual(len(trend), 2)
         self.assertEqual(trend[0]["median_price"], 900000.0)
+
+    def test_weekly_trend_takes_the_median_of_the_weeks_listings(self) -> None:
+        # 28 Eylül 2026 is a Monday; the first three dates share its week.
+        frame = pd.DataFrame({
+            "listing_date": ["28 Eylül 2026", "29 Eylül 2026", "30 Eylül 2026", "5 Ekim 2026"],
+            "price": [100, 900, 1000, 500],
+        })
+        trend = build_listing_trend(frame, interval="week")
+        self.assertEqual([str(point["date"]) for point in trend], ["2026-09-28", "2026-10-05"])
+        self.assertEqual(trend[0]["median_price"], 900.0)
+        self.assertEqual(trend[0]["listing_count"], 3)
 
     def test_overview_and_empty_history_are_honest(self) -> None:
         overview = get_overview(MarketFilters(), self.repository)
@@ -127,6 +142,73 @@ class ApiServiceTests(unittest.TestCase):
         self.assertEqual(_snapshot_scope({"brand": "Test"}), ("brand", "Test"))
         self.assertIsNone(_snapshot_scope({"brand": "Test", "year_min": 2020}))
 
+    def _brand_snapshot(self, day: str, median: float) -> None:
+        with closing(self.repository.connect()) as connection:
+            ensure_snapshot_table(connection)
+            connection.execute(
+                """INSERT INTO market_price_snapshots (snapshot_date, dimension_type, dimension_value, dimension_key,
+                    brand, average_price, median_price, listing_count) VALUES (?, 'brand', 'Test', 'brand:test', 'Test', ?, ?, 10)""",
+                (day, median, median),
+            )
+            connection.commit()
+
+    def test_filters_match_case_insensitively_and_by_range(self) -> None:
+        self.assertEqual(len(self.repository.load_listings({"brand": "test"})), 2)
+        self.assertEqual(len(self.repository.load_listings({"brand": "Test", "year_min": 2021})), 1)
+        self.assertEqual(len(self.repository.load_listings({"mileage_max": 70000})), 1)
+        self.assertEqual(len(self.repository.load_listings({"clean_only": True})), 1)
+        self.assertTrue(self.repository.load_listings({"brand": "Başka"}).empty)
+
+    def test_listing_dates_are_parsed_once_for_the_engine(self) -> None:
+        listings = self.repository.load_listings()
+        self.assertEqual(str(listings["parsed_listing_date"].iloc[0].date()), "2026-07-01")
+
+    def test_cache_follows_database_changes(self) -> None:
+        self.assertEqual(len(self.repository.load_listings()), 2)
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            connection.execute(
+                """INSERT INTO vehicle_listings_clean (id, title, brand, series, model, year, mileage_km, price, currency)
+                   VALUES (3, 'Yeni', 'Test', 'A', '1.0', 2022, 1000, 1100000, 'TRY')"""
+            )
+            connection.commit()
+        os.utime(self.db_path, ns=(time.time_ns(), time.time_ns() + 1_000_000))
+
+        self.assertEqual(len(self.repository.load_listings()), 3)
+
+    def test_entered_damage_is_never_dropped_silently(self) -> None:
+        payload = {"brand": "Test", "series": "A", "model": None, "year": 2020, "mileage_km": 80000,
+                   "changed_parts": 2, "painted_parts": 1}
+        adjustment, note = condition_adjustment_from_payload(payload)
+
+        self.assertIsNone(adjustment)
+        self.assertIn("hesaplanamadı", note)
+
+    def test_missing_package_falls_back_to_the_groups_most_common_one(self) -> None:
+        listings = pd.DataFrame({"year": [2020, 2021, 2020], "mileage_km": [1, 2, 3], "model": ["1.0", "1.4", "1.0"]})
+        enriched, note = enrich_condition_payload({"changed_parts": 1, "painted_parts": 0}, listings)
+
+        self.assertEqual(enriched["model"], "1.0")
+        self.assertIn("en sık görülen paket", note)
+
+    def test_brand_table_reports_snapshot_changes(self) -> None:
+        self._brand_snapshot("2026-06-01", 800000)
+        self._brand_snapshot("2026-07-01", 880000)
+
+        row = grouped_table(self.repository, {}, "brand")[0]
+
+        self.assertEqual(row["label"], "Test")
+        self.assertAlmostEqual(row["change_30d"], 10.0)
+        self.assertIsNone(row["change_90d"])
+
+    def test_brand_table_hides_changes_that_do_not_match_the_filters(self) -> None:
+        self._brand_snapshot("2026-06-01", 800000)
+        self._brand_snapshot("2026-07-01", 880000)
+
+        filtered = grouped_table(self.repository, {"year_min": 2021}, "brand")[0]
+        by_fuel = grouped_table(self.repository, {}, "fuel_type")[0]
+
+        self.assertIsNone(filtered["change_30d"])
+        self.assertIsNone(by_fuel["change_30d"])
 
     def test_price_relationships_use_real_years_and_mileage_bands(self) -> None:
         frame = pd.DataFrame({

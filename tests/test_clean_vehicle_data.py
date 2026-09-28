@@ -2,12 +2,35 @@ from __future__ import annotations
 
 import sqlite3
 import unittest
+from datetime import date
 
 from src.maintenance.clean_vehicle_data import (
+    DEFAULT_MIN_PRICE,
+    CleanRules,
     ModelOutlierPolicy,
+    default_max_year,
     extreme_model_price_outlier_ids,
     standardize_cosmetic_name_variants,
 )
+
+
+class CleanRulesDefaultTests(unittest.TestCase):
+    """The scheduled pipeline builds CleanRules without arguments."""
+
+    def test_rules_are_usable_without_arguments(self) -> None:
+        rules = CleanRules()
+
+        self.assertEqual(rules.min_price, DEFAULT_MIN_PRICE)
+        self.assertEqual(rules.max_year, default_max_year())
+
+    def test_upper_model_year_follows_the_calendar(self) -> None:
+        # A hardcoded bound would reject every listing once the year rolls over.
+        self.assertEqual(default_max_year(), date.today().year + 1)
+
+    def test_explicit_arguments_still_win(self) -> None:
+        rules = CleanRules(min_price=1, max_price=2, min_year=3, max_year=4, max_mileage=5)
+
+        self.assertEqual((rules.min_price, rules.max_year), (1, 4))
 
 
 class CleanVehicleDataTests(unittest.TestCase):

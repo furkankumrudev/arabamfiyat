@@ -1,8 +1,12 @@
-pandas
-numpy
-fastapi
-uvicorn[standard]
-catboost
-scikit-learn
-joblib
-python-dotenv
+# Runtime dependencies for the FastAPI service and the analysis/ML layer.
+# Versions are pinned so local, CI and container builds stay reproducible.
+pandas==3.0.6
+numpy==2.4.6
+fastapi==0.141.1
+uvicorn[standard]==0.53.0
+catboost==1.2.10
+scikit-learn==1.9.1
+joblib==1.6.0
+python-dotenv==1.2.3
+# Reads the monthly TSB reference workbook.
+openpyxl==3.1.5

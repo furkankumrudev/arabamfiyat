@@ -5,9 +5,16 @@ from unittest.mock import patch
 
 import pandas as pd
 
+from src.api.services.market_service import condition_adjustment_from_payload
 from src.ml.predict_price_model import build_feature_frame, estimate_condition_adjustment
 from src.ml.train_price_model import TrainingConfig, normalize_text, prepare_training_frame
-from src.api.services.market_service import condition_adjustment_from_payload
+
+
+class _ExistingPath:
+    """Stand-in for the condition-model artifact path in mapping tests."""
+
+    def exists(self) -> bool:
+        return True
 
 
 class TrainingDataTests(unittest.TestCase):
@@ -63,7 +70,10 @@ class TrainingDataTests(unittest.TestCase):
             "brand": "Volkswagen", "series": "Golf", "model": "1.5 TSI",
             "year": 2021, "mileage_km": 55_000, "changed_parts": 3,
         }
-        with patch("src.api.services.market_service.estimate_condition_adjustment") as estimate:
+        # The trained artifact is not versioned, so keep the mapping check
+        # independent of whether this machine has run the training command.
+        with patch("src.api.services.market_service.DEFAULT_MODEL_PATH", _ExistingPath()), \
+                patch("src.api.services.market_service.estimate_condition_adjustment") as estimate:
             estimate.return_value = type("Adjustment", (), {"percent": -12.0, "capped": False})()
             adjustment, _ = condition_adjustment_from_payload(payload)
 
