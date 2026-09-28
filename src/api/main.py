@@ -5,9 +5,12 @@ from __future__ import annotations
 import logging
 from contextlib import closing
 from datetime import UTC, datetime
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from src.ingestion.sources.demo import DEMO_SOURCE
 from src.maintenance.pipeline import last_success_at
@@ -15,7 +18,7 @@ from src.maintenance.pipeline import last_success_at
 from .database import DatabaseUnavailable, ListingRepository
 from .routes import catalog, listings, market, valuation
 from .schemas import HealthResponse
-from .settings import cors_origins
+from .settings import cors_origins, web_dist_dir
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -88,3 +91,27 @@ def health() -> HealthResponse:
     except Exception:
         logger.exception("Health check failed")
         return HealthResponse(status="unavailable", database_available=False, message="Veritabanı okunamadı.")
+
+
+def mount_web_app(application: FastAPI, dist: Path) -> None:
+    """Serve the built React app from the API process for single-container hosting.
+
+    Registered last so every API route wins; unknown paths fall back to
+    index.html because the app routes on the client.
+    """
+    root = dist.resolve()
+    if (root / "assets").is_dir():
+        application.mount("/assets", StaticFiles(directory=root / "assets"), name="assets")
+
+    @application.get("/{path:path}", include_in_schema=False)
+    def web_app(path: str) -> FileResponse:
+        if path.startswith("api/"):
+            raise HTTPException(status_code=404)
+        candidate = (root / path).resolve()
+        if path and candidate.is_file() and root in candidate.parents:
+            return FileResponse(candidate)
+        return FileResponse(root / "index.html")
+
+
+if (dist := web_dist_dir()) is not None:
+    mount_web_app(app, dist)

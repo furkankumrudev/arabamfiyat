@@ -68,3 +68,6 @@ jobs:
 
       - name: Build web image
         run: docker build --file web/Dockerfile --tag arabamfiyat-web:ci .
+
+      - name: Build single-container demo image
+        run: docker build --file Dockerfile --tag arabamfiyat-demo:ci .

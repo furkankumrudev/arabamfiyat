@@ -38,3 +38,12 @@ def cors_origins() -> list[str]:
         "http://127.0.0.1:5173", "http://localhost:5173",
         "http://127.0.0.1:5174", "http://localhost:5174",
     ]
+
+
+def web_dist_dir() -> Path | None:
+    """The built web app to serve from the API, when WEB_DIST_DIR points at one."""
+    value = os.getenv("WEB_DIST_DIR")
+    if not value:
+        return None
+    path = _path_from_environment("WEB_DIST_DIR", PROJECT_ROOT / "web" / "dist")
+    return path if (path / "index.html").is_file() else None

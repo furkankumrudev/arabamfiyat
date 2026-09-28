@@ -77,3 +77,21 @@ Health yanıtı veri akışının durumunu da bildirir:
 ```
 
 `status` alanı, hat 36 saatten uzun süredir başarıyla tamamlanmadıysa `degraded` olur. Hat hiç çalışmadıysa üç alan da `null` döner; sistem tahminde bulunmaz. Bu, durmuş bir veri akışının "sağlıklı" görünmesini engeller.
+
+## Tek konteyner (canlı demo)
+
+Kök dizindeki `Dockerfile`, React arayüzünü derleyip API'nin içinden sunar; tek bir servis yeterlidir. Barındırma servisinin verdiği `PORT` değişkenini dinler (yoksa 8000). Veritabanı yoksa açılışta demo verisini üretir. Konteynerin diski kalıcı değilse bu her açılışta tekrarlanır; demo tarihleri de böylece hep güncel kalır.
+
+```bash
+docker build -t arabamfiyat-demo .
+docker run -p 8000:8000 arabamfiyat-demo
+```
+
+Render için [`render.yaml`](../render.yaml) hazırdır: *New → Blueprint* ile repoyu bağlamak yeterlidir.
+
+| Değişken | Varsayılan | Anlamı |
+| --- | --- | --- |
+| `PORT` | `8000` | Dinlenecek port |
+| `DEMO_DATA` | `1` | Veritabanı yoksa demo verisi yükle; `0` boş başlatır |
+| `SQLITE_DB_PATH` | `/app/runtime/vehicle_listings.sqlite3` | Veritabanı yolu; kalıcı bir diske yönlendirilebilir |
+| `WEB_DIST_DIR` | `/app/web-dist` | API'nin sunduğu derlenmiş arayüz |

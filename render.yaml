@@ -1,0 +1,12 @@
+# Render Blueprint for a public demo: one free web service running on the
+# synthetic demo data (regenerated on every start, labelled in the UI).
+services:
+  - type: web
+    name: arabamfiyat-demo
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: DEMO_DATA
+        value: "1"
