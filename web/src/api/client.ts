@@ -3,7 +3,25 @@ import type {
   ValuationRequest, ValuationResponse,
 } from "../types";
 
-const API_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://127.0.0.1:8000" : "");
+// Same origin by default: the dev server proxies /api, and production serves both together.
+const API_URL = import.meta.env.VITE_API_URL ?? "";
+
+// fetch only rejects when no HTTP response arrived at all.
+const unreachable = () => new Error("API'ye ulaşılamadı. API sunucusunun çalıştığından emin olun (scripts\\run_api.bat).");
+
+async function request(input: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init);
+  } catch {
+    throw unreachable();
+  }
+}
+
+async function failure(response: Response, fallback: string): Promise<Error> {
+  const body = await response.json().catch(() => null) as { detail?: unknown } | null;
+  if (typeof body?.detail === "string") return new Error(body.detail);
+  return new Error(response.status >= 500 ? `${fallback} (sunucu hatası ${response.status}; ayrıntı API penceresinde)` : fallback);
+}
 
 const toQuery = (values: Record<string, string | number | undefined | null>) => {
   const query = new URLSearchParams();
@@ -15,11 +33,8 @@ const toQuery = (values: Record<string, string | number | undefined | null>) => 
 };
 
 async function get<T>(path: string, params: Record<string, string | number | undefined | null> = {}): Promise<T> {
-  const response = await fetch(`${API_URL}${path}${toQuery(params)}`);
-  if (!response.ok) {
-    const body = await response.json().catch(() => null) as { detail?: string } | null;
-    throw new Error(body?.detail ?? "Veriler şu anda alınamadı.");
-  }
+  const response = await request(`${API_URL}${path}${toQuery(params)}`);
+  if (!response.ok) throw await failure(response, "Veriler şu anda alınamadı.");
   return response.json() as Promise<T>;
 }
 
@@ -34,8 +49,8 @@ export const api = {
   table: (filters: Filters, group_by: string) => get<MarketTableResponse>("/api/market/table", { ...filters, group_by }),
   movers: (direction: "up" | "down") => get<MoversResponse>("/api/market/movers", { direction }),
   valuation: async (payload: ValuationRequest) => {
-    const response = await fetch(`${API_URL}/api/valuation`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    if (!response.ok) throw new Error((await response.json().catch(() => null))?.detail ?? "Değerleme oluşturulamadı.");
+    const response = await request(`${API_URL}/api/valuation`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    if (!response.ok) throw await failure(response, "Değerleme oluşturulamadı.");
     return response.json() as Promise<ValuationResponse>;
   },
 };
