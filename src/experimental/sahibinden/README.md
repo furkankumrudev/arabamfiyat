@@ -20,6 +20,14 @@ Bu klasör, projenin ilk sürümünde ilan verisini sahibinden.com arama sayfala
 | `recent_listing_scraper.py` | Belirli bir tarihten yeni ilanları çeker |
 | `check_removed_listings.py` | Kayıtlı ilanların hâlâ yayında olup olmadığını kontrol eder |
 
+## Günlük güncelleme
+
+```powershell
+.\scripts\experimental\run_daily_update.bat
+```
+
+Son 24 saatin ilanlarını çeker, ardından bakım hattını çalıştırır: ilanları temizler ve günün piyasa özetini kaydeder. Fiyat trendi ve değişim yüzdeleri bu günlük özetlerden oluştuğu için komutu her gün çalıştırmak gerekir; atlanan bir günün özeti sonradan oluşturulamaz. Tarayıcı açılır ve erişim doğrulaması istenirse elle geçmeniz beklenir (en fazla 180 saniye). Temiz beyanlı ilanlar için ayrıca `run_daily_clean_update.bat` vardır.
+
 Betikler: `scripts/experimental/`. Bağımlılıklar: `pip install -r requirements-experimental.txt`.
 
 Yalnızca kullanım izniniz olan kaynaklarda ve kaynağın kurallarına, `robots.txt` kontrollerine ve hız sınırlarına uyarak araştırma amacıyla kullanın.

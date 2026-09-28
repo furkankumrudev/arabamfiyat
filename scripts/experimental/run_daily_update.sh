@@ -16,5 +16,7 @@ echo "Pulling ${SEGMENT} listings from the last 24 hours..."
     --max-repeated-pages 3 --stop-on-access \
     --checkpoint-path "$CHECKPOINT" "$@"
 
-echo "Rebuilding cleaned analysis table..."
-"$PYTHON" -m src.maintenance.clean_vehicle_data
+# The pipeline cleans the new listings and stores today's market summary,
+# which is what the trend chart and the change percentages are built from.
+echo "Cleaning listings and saving today's market summary..."
+"$PYTHON" -m src.maintenance.pipeline
