@@ -7,6 +7,8 @@ services:
     environment:
       SQLITE_DB_PATH: /app/runtime/vehicle_listings.sqlite3
       SOURCE_DB_PATH: /seed-data/vehicle_listings.sqlite3
+      # The entrypoint only sees variables passed here; RESEED_DB=1 refreshes the volume.
+      RESEED_DB: ${RESEED_DB:-0}
       CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
     volumes:
       - ./data/runtime:/seed-data:ro

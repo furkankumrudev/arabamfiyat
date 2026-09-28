@@ -102,7 +102,9 @@ Tohumu bilerek tazelemek icin `RESEED_DB=1` ile baslat.
 
 ### Geliştirme ortamı
 
-İki ayrı terminal aç. Windows:
+Windows'ta `scripts\start_local.bat` dosyasına çift tıkla: API ve web ayrı pencerelerde açılır, site tarayıcıda kendiliğinden açılır.
+
+Elle başlatmak için iki ayrı terminal aç. Windows:
 
 ```bat
 scripts\run_api.bat
