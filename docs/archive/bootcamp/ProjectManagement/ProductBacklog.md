@@ -16,4 +16,4 @@ Durumlar proje ilerledikce gercek sprint kararlarina gore guncellenir.
 | AF-10 | Gelistirici olarak kondisyon etkisi modelini tekrar egitip metriklerini kaydedebilmeliyim. | Should | Done | Train/test ayrimi, MAE, RMSE, SMAPE ve model artefakti egitim komutuyla uretilir. |
 | AF-11 | Kullanici olarak urunu mobil ekranda kullanabilmeliyim. | Should | Done | 360px gorunumde yatay tasma olmaz. |
 | AF-12 | Juri olarak urunu yerelde veya deploy edilmis ortamda calistirabilmeliyim. | Must | Done | Docker ile tek komutlu yerel kurulum ve calisan demo dogrulandi. |
-| AF-13 | Juri olarak modelin veri kaynagini, metriklerini ve sinirlarini inceleyebilmeliyim. | Must | Done | [Model karti](../docs/model-card.md) modelin kullanim amacini ve sinirlarini aciklar. |
+| AF-13 | Juri olarak modelin veri kaynagini, metriklerini ve sinirlarini inceleyebilmeliyim. | Must | Done | [Model karti](../../../model-card.md) modelin kullanim amacini ve sinirlarini aciklar. |

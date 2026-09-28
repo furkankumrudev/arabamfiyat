@@ -12,9 +12,9 @@ Bu klasor, YZTA Bootcamp Scrum sablonundaki proje yonetimi kanitlarini tutar. Be
 | Cozum | Temizlenmis guncel ilanlardan piyasa analizi, fiyat araligi ve kondisyon etkisiyle degerleme |
 | Hedef kitle | Bireysel arac alici/saticilari ve kucuk olcekli saticilar |
 | Backlog | [ProductBacklog.md](ProductBacklog.md) |
-| Urun vizyonu | [docs/product-vision.md](../docs/product-vision.md) |
-| Mimari | [docs/architecture.md](../docs/architecture.md) |
-| Model karti | [docs/model-card.md](../docs/model-card.md) |
+| Urun vizyonu | [docs/product-vision.md](../../../product-vision.md) |
+| Mimari | [docs/architecture.md](../../../architecture.md) |
+| Model karti | [docs/model-card.md](../../../model-card.md) |
 
 ## Takım Üyesi ve Roller
 

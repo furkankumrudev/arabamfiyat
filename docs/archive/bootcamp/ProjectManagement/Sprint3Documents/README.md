@@ -58,6 +58,6 @@ Kaggle veri seti yaklaşık iki yıl öncesine ait olduğu için, modelin doğru
 
 ## Kanıtlar
 
-[Değerleme sonucu](evidence/valuation-result.png) gerçek kullanıcı akışını; [teknik doğrulama](evidence/verification.md) test, production build ve Docker sonuçlarını içerir. Model metrikleri [model kartında](../../docs/model-card.md) ayrıntılı biçimde belgelenmiştir.
+[Değerleme sonucu](evidence/valuation-result.png) gerçek kullanıcı akışını; [teknik doğrulama](evidence/verification.md) test, production build ve Docker sonuçlarını içerir. Model metrikleri [model kartında](../../../../model-card.md) ayrıntılı biçimde belgelenmiştir.
 
 İlgili teknik çıktılar: `src/ml/`, `tests/test_ml_training.py`, `tests/test_api_services.py`, `web/`, `docker-compose.yml`, `docs/model-card.md` ve `docs/architecture.md`.
