@@ -5,7 +5,11 @@ import { money, number, percent } from "../utils/format";
 import { EmptyState } from "./StatePanels";
 
 function ConditionAdjustmentCard({ data }: { data: ValuationResponse }) {
-  if (data.condition_adjustment_percent == null) return null;
+  // Entered damage that could not be applied must be visible, not silently dropped.
+  if (data.condition_adjustment_percent == null) {
+    if (!data.condition_adjustment_note) return null;
+    return <div className="condition-adjustment-card"><div><span className="eyebrow"><BadgePercent size={14} />DURUM ETKİSİ</span><strong>Hesaba katılmadı</strong></div><p>{data.condition_adjustment_note} Gösterilen değer boya ve değişen durumunu içermez.</p></div>;
+  }
   const unchanged = data.condition_adjustment_percent === 0;
   return <div className="condition-adjustment-card"><div><span className="eyebrow"><BadgePercent size={14} />DURUM ETKİSİ</span><strong>{unchanged ? "Referans durum" : percent(data.condition_adjustment_percent)}</strong></div><p>{data.condition_adjustment_note}</p></div>;
 }

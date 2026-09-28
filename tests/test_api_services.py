@@ -21,6 +21,7 @@ from src.api.services.market_service import (
     build_reference_listing_trend,
     build_reference_mileage_points,
     build_reference_price_points,
+    condition_adjustment_from_payload,
     enrich_condition_payload,
     grouped_table,
 )
@@ -148,6 +149,21 @@ class ApiServiceTests(unittest.TestCase):
                 (day, median, median),
             )
             connection.commit()
+
+    def test_entered_damage_is_never_dropped_silently(self) -> None:
+        payload = {"brand": "Test", "series": "A", "model": None, "year": 2020, "mileage_km": 80000,
+                   "changed_parts": 2, "painted_parts": 1}
+        adjustment, note = condition_adjustment_from_payload(payload)
+
+        self.assertIsNone(adjustment)
+        self.assertIn("hesaplanamadı", note)
+
+    def test_missing_package_falls_back_to_the_groups_most_common_one(self) -> None:
+        listings = pd.DataFrame({"year": [2020, 2021, 2020], "mileage_km": [1, 2, 3], "model": ["1.0", "1.4", "1.0"]})
+        enriched, note = enrich_condition_payload({"changed_parts": 1, "painted_parts": 0}, listings)
+
+        self.assertEqual(enriched["model"], "1.0")
+        self.assertIn("en sık görülen paket", note)
 
     def test_brand_table_reports_snapshot_changes(self) -> None:
         self._brand_snapshot("2026-06-01", 800000)

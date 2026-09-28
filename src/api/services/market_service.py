@@ -183,12 +183,15 @@ def movers(repository: ListingRepository, direction: str) -> list[dict[str, obje
 
 def condition_adjustment_from_payload(payload: dict[str, Any]) -> tuple[ConditionAdjustment | None, str | None]:
     """Estimate only the paint/change discount, never a second standalone price."""
-    required = ("brand", "series", "model", "year", "mileage_km")
-    if any(payload.get(field) in (None, "") for field in required):
-        return None, None
     changed_parts = payload.get("changed_parts")
     painted_parts = payload.get("painted_parts")
     if changed_parts is None and painted_parts is None:
+        return None, None
+    required = ("brand", "series", "model", "year", "mileage_km")
+    if any(payload.get(field) in (None, "") for field in required):
+        # Say so when the user described damage, rather than dropping it silently.
+        if changed_parts or painted_parts:
+            return None, "Boya ve değişen etkisi hesaplanamadı: araç grubunda paket, yıl veya kilometre bilgisi bulunamadı."
         return None, None
     if not DEFAULT_MODEL_PATH.exists():
         return None, "Boya ve değişen etkisi modeli henüz eğitilmemiş."
@@ -240,9 +243,16 @@ def enrich_condition_payload(
             enriched["mileage_km"] = int(mileages.median())
             used_fields.append("kilometre")
 
-    if not used_fields:
-        return enriched, None
-    return enriched, f"{', '.join(used_fields).capitalize()} girilmediği için referans ilan grubunun medyanı kullanıldı."
+    notes: list[str] = []
+    if used_fields:
+        notes.append(f"{', '.join(used_fields).capitalize()} girilmediği için referans ilan grubunun medyanı kullanıldı.")
+    if not enriched.get("model") and "model" in reference_listings:
+        packages = reference_listings["model"].dropna().astype(str).str.strip()
+        packages = packages[packages.ne("")]
+        if not packages.empty:
+            enriched["model"] = str(packages.mode().iloc[0])
+            notes.append(f"Paket seçilmediği için grupta en sık görülen paket ({enriched['model']}) kullanıldı.")
+    return enriched, " ".join(notes) or None
 
 
 def _assess_asking_price(market_value: float, asking_price: int | None) -> tuple[str | None, float | None]:
@@ -383,7 +393,8 @@ def valuation(repository: ListingRepository, payload: dict[str, Any]) -> dict[st
         }
     condition_payload, fallback_note = enrich_condition_payload(payload, result["used_listings"])
     adjustment, adjustment_note = condition_adjustment_from_payload(condition_payload)
-    if adjustment_note and fallback_note:
+    # The substituted year, mileage or package only matters when an adjustment was made.
+    if adjustment is not None and adjustment_note and fallback_note:
         adjustment_note = f"{adjustment_note} {fallback_note}"
     summary = result["summary"]
     comparison_summary = build_comparison_summary(
