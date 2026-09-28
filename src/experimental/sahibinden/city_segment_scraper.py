@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
-from src.ingestion.category_page_scraper import (
+from src.experimental.sahibinden.category_page_scraper import (
     BASE_URL,
     extract_total_count,
     find_browser_executable,
@@ -19,7 +19,7 @@ from src.ingestion.category_page_scraper import (
     has_login_page,
     store_html_page,
 )
-from src.ingestion.sahibinden_scraper import ScraperConfig, start_browser, wait_for_manual_access_check
+from src.experimental.sahibinden.scraper import ScraperConfig, start_browser, wait_for_manual_access_check
 from src.ingestion.storage import DEFAULT_DB_PATH
 
 CHECKPOINT_PATH = Path("data") / "runtime" / "city_segment_checkpoint.json"

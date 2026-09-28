@@ -13,6 +13,8 @@ if not exist "web\node_modules" (
   call npm.cmd ci || (popd & pause & exit /b 1)
   popd
 )
+rem A fresh checkout has no listing data; start with the synthetic demo set.
+call "%~dp0load_demo_data.bat" --if-missing || (pause & exit /b 1)
 start "ArabamFiyat API" cmd /k "%~dp0run_api.bat"
 start "ArabamFiyat Web" cmd /k "cd /d "%~dp0..\web" && npm.cmd run dev -- --open"
 echo API ve web ayri pencerelerde basladi. Site tarayicida acilacak: http://localhost:5173

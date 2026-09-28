@@ -144,3 +144,12 @@ export type ValuationResponse = {
   condition_adjustment_percent: number | null;
   condition_adjustment_note: string | null;
 };
+
+export type HealthResponse = {
+  status: string;
+  database_available: boolean;
+  listing_count: number | null;
+  message: string | null;
+  data_sources: string[];
+  demo_data: boolean;
+};

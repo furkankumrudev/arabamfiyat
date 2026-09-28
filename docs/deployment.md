@@ -5,10 +5,10 @@ Bu yapı, React arayüzü ve FastAPI servisinin tek bir yerel adres altında ça
 ## Gereksinimler
 
 - Docker Desktop
-- Yerel izinli SQLite veritabanı: `data/runtime/vehicle_listings.sqlite3`
+- Opsiyonel izinli SQLite veritabanı: `data/runtime/vehicle_listings.sqlite3` (yoksa demo verisi kullanılır)
 - Opsiyonel kondisyon etkisi modeli: `data/models/kaggle_price_effect/kaggle_price_effect_model.cbm`
 
-Veritabanı konteynere salt okunur kaynak olarak bağlanır ve Git'e eklenmez. İlk açılışta `api-runtime` adlı kalıcı volume'e kopyalanır; bu, Windows bind mount'larında SQLite dosya kilitleme sorunlarını önler. Volume dolu olduğunda tohumlama tekrarlanmaz, böylece biriken günlük snapshot'lar ve temizlenmiş tablo yeniden başlatmalarda korunur. Tohumu bilerek tazelemek için `RESEED_DB=1` kullanılır. Veritabanı yoksa API health kontrolü başarısız olur; bu, sahte piyasa verisiyle açılmaktan daha güvenlidir.
+Veritabanı konteynere salt okunur kaynak olarak bağlanır ve Git'e eklenmez. İlk açılışta `api-runtime` adlı kalıcı volume'e kopyalanır; bu, Windows bind mount'larında SQLite dosya kilitleme sorunlarını önler. Volume dolu olduğunda tohumlama tekrarlanmaz, böylece biriken günlük snapshot'lar ve temizlenmiş tablo yeniden başlatmalarda korunur. Tohumu bilerek tazelemek için `RESEED_DB=1` kullanılır. Veritabanı yoksa API ilk açılışta sentetik demo verisini üretir ve yükler. `/api/health` bunu `demo_data: true` olarak bildirir, arayüz de her sayfada "Demo verisi" uyarısı gösterir; sentetik fiyatlar gerçek piyasa gibi sunulmaz. Boş başlatmak için `DEMO_DATA=0 docker compose up` kullanılır.
 
 ## Servisler
 

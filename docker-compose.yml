@@ -9,6 +9,9 @@ services:
       SOURCE_DB_PATH: /seed-data/vehicle_listings.sqlite3
       # The entrypoint only sees variables passed here; RESEED_DB=1 refreshes the volume.
       RESEED_DB: ${RESEED_DB:-0}
+      # Without data/runtime/vehicle_listings.sqlite3 the API starts on demo data;
+      # DEMO_DATA=0 starts it empty instead.
+      DEMO_DATA: ${DEMO_DATA:-1}
       CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
     volumes:
       - ./data/runtime:/seed-data:ro

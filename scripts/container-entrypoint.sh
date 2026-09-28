@@ -15,4 +15,12 @@ if [ -n "${SOURCE_DB_PATH:-}" ] && [ -f "$SOURCE_DB_PATH" ]; then
     fi
 fi
 
+# With no seed database at all, start from the synthetic demo set so a fresh
+# `docker compose up` shows a working product. The UI labels it as demo data.
+# Only the service that sets DEMO_DATA=1 (the API) does this.
+if [ ! -f "$SQLITE_DB_PATH" ] && [ "${DEMO_DATA:-0}" = "1" ]; then
+    echo "No database found; loading demo data into $SQLITE_DB_PATH"
+    python -m src.ingestion.load_listings demo --db-path "$SQLITE_DB_PATH"
+fi
+
 exec "$@"

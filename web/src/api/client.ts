@@ -1,5 +1,5 @@
 import type {
-  CatalogResponse, Filters, MarketOverview, MarketTableResponse, MoversResponse, PriceRelationshipsResponse, TrendResponse,
+  CatalogResponse, Filters, HealthResponse, MarketOverview, MarketTableResponse, MoversResponse, PriceRelationshipsResponse, TrendResponse,
   ValuationRequest, ValuationResponse,
 } from "../types";
 
@@ -24,6 +24,7 @@ async function get<T>(path: string, params: Record<string, string | number | und
 }
 
 export const api = {
+  health: () => get<HealthResponse>("/api/health"),
   brands: () => get<CatalogResponse>("/api/catalog/brands"),
   series: (brand: string) => get<CatalogResponse>("/api/catalog/series", { brand }),
   models: (brand: string, series: string) => get<CatalogResponse>("/api/catalog/models", { brand, series }),

@@ -18,8 +18,8 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup, Tag
 
-from .schema import VehicleListing
-from .storage import DEFAULT_DB_PATH, ListingStore
+from src.ingestion.schema import VehicleListing
+from src.ingestion.storage import DEFAULT_DB_PATH, ListingStore
 
 BASE_URL = "https://www.sahibinden.com"
 DEFAULT_DEBUG_HTML_PATH = Path("data") / "runtime" / "debug_sahibinden_home.html"

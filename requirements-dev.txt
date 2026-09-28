@@ -1,5 +1,5 @@
 # Tooling used by the verification pipeline and by CI.
--r requirements.txt
+-r requirements-api.txt
 
 ruff==0.14.5
 # Required by fastapi.testclient for the API smoke tests.

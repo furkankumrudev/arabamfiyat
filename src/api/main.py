@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.ingestion.sources.demo import DEMO_SOURCE
 from src.maintenance.pipeline import last_success_at
 
 from .database import DatabaseUnavailable, ListingRepository
@@ -59,6 +60,15 @@ def pipeline_freshness(connection) -> dict[str, object]:
     }
 
 
+def data_sources(connection, table: str) -> list[str]:
+    """List the sources behind the analysed listings so demo data is never passed off as real."""
+    columns = {str(row[1]) for row in connection.execute(f"PRAGMA table_info({table})")}
+    if "source" not in columns:
+        return []
+    rows = connection.execute(f"SELECT DISTINCT source FROM {table} WHERE source IS NOT NULL ORDER BY source")
+    return [str(row[0]) for row in rows]
+
+
 @app.get("/api/health", response_model=HealthResponse, tags=["health"])
 def health() -> HealthResponse:
     repository = ListingRepository()
@@ -67,9 +77,11 @@ def health() -> HealthResponse:
             table = repository.listing_table(connection)
             count = int(connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
             freshness = pipeline_freshness(connection)
+            sources = data_sources(connection, table)
         status = "degraded" if freshness["pipeline_stale"] else "ok"
         return HealthResponse(
-            status=status, database_available=True, table=table, listing_count=count, **freshness
+            status=status, database_available=True, table=table, listing_count=count,
+            data_sources=sources, demo_data=DEMO_SOURCE in sources, **freshness
         )
     except DatabaseUnavailable as exc:
         return HealthResponse(status="unavailable", database_available=False, message=str(exc))

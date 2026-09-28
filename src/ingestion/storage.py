@@ -1,4 +1,4 @@
-"""SQLite storage adapter for scraped vehicle listings."""
+"""SQLite storage adapter for vehicle listings from any source."""
 
 from __future__ import annotations
 
@@ -78,7 +78,7 @@ class ListingStore:
                 self.connection.execute(f"ALTER TABLE vehicle_listings ADD COLUMN {column}")
         self.connection.commit()
 
-    def upsert_listing(self, listing: VehicleListing) -> bool:
+    def upsert_listing(self, listing: VehicleListing, commit: bool = True) -> bool:
         data = listing.to_dict()
         columns = list(data)
         placeholders = ", ".join([":" + column for column in columns])
@@ -105,15 +105,26 @@ class ListingStore:
             """,
             data,
         )
-        self.connection.commit()
+        if commit:
+            self.connection.commit()
         return self.connection.total_changes > before
 
     def upsert_many(self, listings: Iterable[VehicleListing]) -> int:
+        # One transaction for the batch: committing per row makes large imports crawl.
         changed = 0
-        for listing in listings:
-            if self.upsert_listing(listing):
-                changed += 1
+        try:
+            for listing in listings:
+                if self.upsert_listing(listing, commit=False):
+                    changed += 1
+        except BaseException:
+            self.connection.rollback()
+            raise
+        self.connection.commit()
         return changed
+
+    def sources(self) -> dict[str, int]:
+        rows = self.connection.execute("SELECT source, COUNT(*) FROM vehicle_listings GROUP BY source").fetchall()
+        return {str(row[0]): int(row[1]) for row in rows}
 
     def count(self) -> int:
         row = self.connection.execute("SELECT COUNT(*) AS total FROM vehicle_listings").fetchone()

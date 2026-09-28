@@ -31,6 +31,9 @@ class HealthResponse(BaseModel):
     last_pipeline_success_at: str | None = None
     pipeline_age_hours: float | None = None
     pipeline_stale: bool | None = None
+    # Where the analysed listings come from. "demo" means synthetic data.
+    data_sources: list[str] = []
+    demo_data: bool = False
 
 
 class MarketOverview(BaseModel):

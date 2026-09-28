@@ -41,7 +41,8 @@ Final ürün arayüzü React uygulamasıdır; demo ve geliştirme akışı `web/
 - Python 3.11 veya üstü
 - Node.js 20 veya üstü
 - npm
-- Analiz için izinli ve yerel bir SQLite ilan veritabanı
+
+Başka bir şey gerekmez: ilan veritabanı yoksa uygulama sentetik demo verisiyle açılır.
 
 ### Kurulum
 
@@ -67,13 +68,14 @@ cp .env.example .env
 (cd web && npm ci)
 ```
 
-Bagimlilik dosyalari uc katmana ayrilmistir:
+Bağımlılık dosyaları:
 
-| Dosya | Icerik |
+| Dosya | İçerik |
 | --- | --- |
-| `requirements-api.txt` | API, analiz ve ML calisma zamani |
-| `requirements.txt` | Yukaridakiler + ilan alma katmani |
-| `requirements-dev.txt` | Yukaridakiler + lint ve dogrulama araclari |
+| `requirements-api.txt` | API, analiz ve ML çalışma zamanı (ürünün ihtiyacı olan her şey) |
+| `requirements.txt` | `requirements-api.txt` ile aynı; bu adı arayan barındırma servisleri için |
+| `requirements-dev.txt` | Çalışma zamanı + lint ve test araçları |
+| `requirements-experimental.txt` | Çalışma zamanı + deneysel sahibinden.com scraper'ı |
 
 Surumler sabitlenmistir; yerel kurulum, CI ve container imajlari ayni paketleri kullanir.
 
@@ -83,7 +85,21 @@ Surumler sabitlenmistir; yerel kurulum, CI ve container imajlari ayni paketleri 
 data/runtime/vehicle_listings.sqlite3
 ```
 
-Veritabanı ve model artefaktları Git'e dahil edilmez. Uygulama bu veri bulunmadığında açık bir durum mesajı döndürür; sahte piyasa sonucu üretmez.
+Veritabanı ve model artefaktları Git'e dahil edilmez. Veri yüklemenin yolları [Veri Kaynakları](#veri-kaynakları) bölümünde.
+
+### Demo verisi
+
+İlan verin yoksa sentetik demo verisini yükle:
+
+```bat
+scripts\load_demo_data.bat
+```
+
+```bash
+./scripts/load_demo_data.sh
+```
+
+Komut 6.000 sentetik ilan üretir, temizleme hattından geçirir ve 12 haftalık piyasa özeti oluşturur. Arayüz bu durumda üstte **"Demo verisi"** uyarısı gösterir; sentetik fiyatlar hiçbir yerde gerçek piyasa gibi sunulmaz. `scripts\start_local.bat` ve Docker akışı, veritabanı yoksa bunu kendiliğinden yapar.
 
 ### Docker ile demo (önerilen)
 
@@ -95,6 +111,8 @@ docker compose up --build
 
 Ardından uygulamayı `http://localhost:8080` adresinden aç. Bu akışta React arayüzü ve FastAPI aynı adres üzerinden birlikte çalışır.
 
+`data/runtime/vehicle_listings.sqlite3` varsa o kullanılır; yoksa API ilk açılışta demo verisini yükler. Boş başlatmak için `DEMO_DATA=0` ver.
+
 Calisma veritabani `api-runtime` adli kalici bir volume uzerinde tutulur:
 `data/runtime/` altindaki veritabani yalnizca volume bos oldugunda tohum olarak
 kopyalanir, sonraki her yeniden baslatmada birikmis gunluk snapshot'lar korunur.
@@ -102,7 +120,7 @@ Tohumu bilerek tazelemek icin `RESEED_DB=1` ile baslat.
 
 ### Geliştirme ortamı
 
-Windows'ta `scripts\start_local.bat` dosyasına çift tıkla: API ve web ayrı pencerelerde açılır, site tarayıcıda kendiliğinden açılır.
+Windows'ta `scripts\start_local.bat` dosyasına çift tıkla: veritabanı yoksa demo verisini yükler, API ve web'i ayrı pencerelerde açar, siteyi tarayıcıda kendiliğinden açar.
 
 Elle başlatmak için iki ayrı terminal aç. Windows:
 
@@ -167,20 +185,35 @@ scripts\train_price_model.bat
 
 ## Veri Kaynakları
 
-Uygulama iki ayrı kaynaktan beslenir ve bunları asla birbirine karıştırmaz:
+Analiz katmanı ilanların nereden geldiğini bilmez. Her kaynak aynı ilan şemasını (`src/ingestion/schema.py`) üretir, aynı ham tabloya yazılır ve aynı temizleme hattından geçer:
 
-| Kaynak | Tablo | Ne anlatır | Nasıl gelir |
-| --- | --- | --- | --- |
-| TSB kasko değer listesi | `reference_vehicle_values` | Marka/model/yıl bazında **sigorta referans değeri** | Aylık yayımlanan dosya; tam otomatik aktarım |
-| İlan verisi | `vehicle_listings` → `vehicle_listings_clean` | Gerçek **ilan isteme fiyatı**, kilometre ve kondisyon | Operatör komutuyla toplanır |
+```text
+kaynak (demo | CSV | ileride partner API)  ->  vehicle_listings  ->  temizleme  ->  analiz + API
+```
 
-Referans değer omurgadır: aylık gelir, kesintiye uğramaz ve uygulamanın her zaman bir dayanağı olmasını sağlar. İlan verisi ise bunun üzerine güncel piyasa sapmasını ekleyen katmandır.
+| Kaynak | Komut | Ne zaman |
+| --- | --- | --- |
+| Demo verisi | `scripts/load_demo_data` | Denemek, sunmak, geliştirmek |
+| CSV dosyası | `scripts/import_listings <dosya.csv>` | Kullanım izni olan her veri: partner dışa aktarımı, lisanslı veri seti, elle toplanan ilanlar |
+| TSB kasko değer listesi | `data/reference/kasko/` klasörü | Aylık resmi **sigorta referans değeri**; ilan fiyatıyla karıştırılmaz, ayrı tabloda tutulur |
+
+Yeni bir kaynak eklemek, `ListingSource` arayüzünü (`src/ingestion/sources/base.py`) uygulayan küçük bir sınıf yazmaktır.
+
+### CSV ile kendi verini yüklemek
+
+Başlıklar şemanın sütun adlarıdır. Zorunlu olanlar: `title, brand, series, model, year, mileage_km, price`. İsteğe bağlı olanlar arasında `city, fuel_type, transmission, body_type, listing_date, source_listing_id` bulunur. Virgül veya noktalı virgül ile ayrılmış dosyalar ve `1.250.000 TL`, `85.000 km` gibi Türkçe yazımlar okunur. Örnek dosya: [data/examples/listings_example.csv](data/examples/listings_example.csv).
+
+```bash
+./scripts/import_listings.sh data/examples/listings_example.csv --source-name ornek
+```
+
+Zorunlu bir sütun eksikse aktarım hiçbir şey yazmadan durur ve dosyada gördüğü başlıkları listeler. Aynı dosyayı tekrar yüklemek kayıtları çoğaltmaz. Demo verisi ile gerçek veri aynı veritabanında karıştırılmaz; komut bunu reddeder.
 
 Referans listelerinin nasıl bırakılacağı [data/reference/kasko/README.md](data/reference/kasko/README.md) dosyasında anlatılır.
 
-### Neden ilan toplama otomatik değil
+### Deneysel: sahibinden.com scraper'ı
 
-İlan kaynağı otomatik erişimi kasten engelliyor (erişim doğrulaması ve oturum duvarı). Bu engeli aşmak yerine, toplama katmanı görünür tarayıcıyla çalışan bir **operatör komutu** olarak bırakıldı; doğrulama gerektiğinde durur ve insanı bekler. Süreklilik bu yüzden referans değer kaynağına dayandırılmıştır.
+Projenin ilk sürümünde ilanlar sahibinden.com'dan tarayıcıyla toplanıyordu. Bu kod [src/experimental/sahibinden/](src/experimental/sahibinden/README.md) altında araştırma prototipi olarak duruyor. Ürün ona bağlı değildir ve varsayılan kurulumla gelmez; neden bırakıldığı klasörün README'sinde anlatılır.
 
 ## Günlük Veri Akışı
 
@@ -213,14 +246,15 @@ Aylık liste günde bir kez kontrol edilir; yeni dönem yoksa adım `skipped` ol
 
 Hattın her adımı, başarılı da olsa başarısız da olsa `pipeline_runs` tablosuna yazılır. Bir adım hata alırsa hat durmaz: sonraki adım yine çalışır ve hata kaydedilir. `/api/health` bu kayıtlara bakarak son başarılı çalışmayı, üzerinden geçen saati ve hattın bayatlayıp bayatlamadığını bildirir; 36 saati aşan sessizlikte `status` alanı `degraded` olur. Böylece durmuş bir veri akışı sessizce sağlıklı görünmez.
 
-İlan toplama adımı bu hatta bilinçli olarak dahil edilmemiştir: tarayıcı sürdüğü ve manuel erişim doğrulaması isteyebildiği için operatör komutu olarak kalır (`scripts/run_daily_update.sh`).
+İlan verisini yüklemek bu hattın parçası değildir: kaynağa göre değişen, bilinçli yapılan bir işlemdir (`scripts/import_listings`, `scripts/load_demo_data`). Hat, veritabanında ne varsa onu tazeler.
 
 ## Veri İlkeleri
 
 - Uygulama analizde temizlenmiş ilan tablosunu tercih eder; temiz tablo yoksa ham tabloya güvenli biçimde geri döner.
 - Tarihsel trendler yalnızca gerçekten kaydedilmiş tarih veya snapshot verisinden üretilir.
 - Geçmiş veri yetersizse uygulama sahte değişim yüzdesi ya da düz çizgi göstermez.
-- Veri alma katmanı, izinli veri kaynakları, resmi API'ler veya partner akışlarıyla değiştirilebilecek şekilde ayrıştırılmıştır.
+- Veri alma katmanı kaynaktan bağımsızdır; izinli veri kaynakları, resmi API'ler veya partner akışları aynı arayüzle eklenir.
+- Sentetik demo verisi `source = demo` olarak saklanır, gerçek veriyle aynı veritabanına yüklenemez ve arayüzde her zaman etiketlenir.
 
 ## Dokümantasyon
 

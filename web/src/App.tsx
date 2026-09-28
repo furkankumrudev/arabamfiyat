@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AppHeader } from "./components/AppHeader";
+import { DataSourceBanner } from "./components/DataSourceBanner";
 import { MarketTrendsPage } from "./pages/MarketTrendsPage";
 import { ValuationPage } from "./pages/ValuationPage";
 
@@ -22,5 +23,5 @@ export default function App() {
     if (!target) { window.scrollTo({ top: 0, behavior: "smooth" }); return; }
     window.setTimeout(() => document.getElementById(target)?.scrollIntoView({ behavior: "smooth" }), 0);
   };
-  return <><AppHeader page={page} onNavigate={navigate} />{page === "valuation" ? <ValuationPage /> : <MarketTrendsPage />}<footer><div className="shell">ArabamFiyat.com <span>·</span> Veriye dayalı ikinci el araç piyasa analizi</div></footer></>;
+  return <><AppHeader page={page} onNavigate={navigate} /><DataSourceBanner />{page === "valuation" ? <ValuationPage /> : <MarketTrendsPage />}<footer><div className="shell">ArabamFiyat.com <span>·</span> Veriye dayalı ikinci el araç piyasa analizi</div></footer></>;
 }

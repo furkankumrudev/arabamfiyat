@@ -1,5 +1,3 @@
-# Full local development set: the API runtime plus the ingestion layer.
+# Everything the product needs to run. Kept at the conventional name for hosts
+# that look for it; the pinned list itself lives in requirements-api.txt.
 -r requirements-api.txt
-
-beautifulsoup4==4.15.0
-nodriver==0.50.3

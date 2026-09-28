@@ -203,7 +203,10 @@ def main(argv: list[str] | None = None) -> int:
     db_path = args.db_path or sqlite_db_path()
     if not db_path.exists():
         # Creating an empty database here would only hide that ingestion never ran.
-        print(f"Veritabani bulunamadi: {db_path}. Once ilan verisini aktarin (README: veri alma adimlari).")
+        print(
+            f"Veritabani bulunamadi: {db_path}. Demo verisi icin scripts/load_demo_data, "
+            "kendi verin icin scripts/import_listings calistirin."
+        )
         return 1
     results = run_pipeline(db_path, args.catalog_path, args.date)
     for result in results:

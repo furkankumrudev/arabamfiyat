@@ -15,7 +15,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from src.ingestion.sahibinden_scraper import (
+from src.experimental.sahibinden.scraper import (
     ScraperConfig,
     parse_search_results,
     start_browser,
