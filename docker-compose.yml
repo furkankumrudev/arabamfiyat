@@ -40,6 +40,8 @@ services:
     volumes:
       - api-runtime:/app/runtime
       - ./data/models:/app/data/models:ro
+      # Monthly TSB workbooks dropped here are imported without an image rebuild.
+      - ./data/reference/kasko:/app/data/reference/kasko:ro
     depends_on:
       api:
         condition: service_healthy
