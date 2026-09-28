@@ -144,6 +144,23 @@ export type ValuationResponse = {
   condition_adjustment_percent: number | null;
   condition_adjustment_note: string | null;
   reference_value: ReferenceValue | null;
+  comparable_listings: SimilarListing[];
+  sale_reports: SaleReportSummary | null;
+};
+
+export type SaleReportSummary = { count: number; median_price: number | null; year_window: number };
+
+export type SaleReportRequest = {
+  brand: string;
+  series: string;
+  model?: string;
+  year: number;
+  mileage_km?: number;
+  sale_price: number;
+  sold_month?: string;
+  city?: string;
+  changed_parts?: number;
+  painted_parts?: number;
 };
 
 export type ReferenceValue = {

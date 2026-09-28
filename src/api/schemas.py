@@ -188,6 +188,32 @@ class ReferenceValue(BaseModel):
     market_to_reference_percent: float | None = None
 
 
+class SaleReportSummary(BaseModel):
+    """Median of user-reported sale prices; hidden below the minimum report count."""
+
+    count: int
+    median_price: float | None = None
+    year_window: int
+
+
+class SaleReportRequest(BaseModel):
+    brand: str = Field(min_length=1, max_length=80)
+    series: str = Field(min_length=1, max_length=100)
+    model: str | None = Field(default=None, max_length=140)
+    year: int = Field(ge=1950, le=2100)
+    mileage_km: int | None = Field(default=None, ge=0, le=2_000_000)
+    sale_price: int = Field(ge=10_000, le=200_000_000)
+    sold_month: str | None = Field(default=None, pattern=r"^20\d{2}-(0[1-9]|1[0-2])$")
+    city: str | None = Field(default=None, max_length=60)
+    changed_parts: int | None = Field(default=None, ge=0, le=30)
+    painted_parts: int | None = Field(default=None, ge=0, le=30)
+
+
+class SaleReportResponse(BaseModel):
+    status: str
+    message: str
+
+
 class ValuationResponse(BaseModel):
     status: str
     estimated_market_value: float | None = None
@@ -207,8 +233,5 @@ class ValuationResponse(BaseModel):
     condition_adjustment_percent: float | None = None
     condition_adjustment_note: str | None = None
     reference_value: ReferenceValue | None = None
-
-
-class SimilarListingsResponse(BaseModel):
-    items: list[SimilarListing] = Field(default_factory=list)
-    message: str | None = None
+    comparable_listings: list[SimilarListing] = Field(default_factory=list)
+    sale_reports: SaleReportSummary | None = None

@@ -19,7 +19,7 @@ from src.maintenance.pipeline import last_success_at
 
 from .database import DatabaseUnavailable, ListingRepository
 from .dependencies import REPOSITORY
-from .routes import catalog, listings, market, valuation
+from .routes import catalog, market, sale_reports, valuation
 from .schemas import HealthResponse
 from .settings import cors_origins, web_dist_dir
 
@@ -54,7 +54,7 @@ app.add_middleware(
 app.include_router(catalog.router)
 app.include_router(market.router)
 app.include_router(valuation.router)
-app.include_router(listings.router)
+app.include_router(sale_reports.router)
 
 
 # A daily pipeline that has not succeeded within this many hours is reported as

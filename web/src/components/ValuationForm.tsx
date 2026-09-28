@@ -5,16 +5,17 @@ import type { Filters, ValuationRequest } from "../types";
 const formatNumberInput = (value: string) => value ? new Intl.NumberFormat("tr-TR").format(Number(value)) : "";
 const MAX_MODEL_YEAR = new Date().getFullYear() + 1;
 
-export function ValuationForm({ onSubmit, loading = false }: { onSubmit: (payload: ValuationRequest) => void; loading?: boolean }) {
-  const [filters, setFilters] = useState<Filters>({});
-  const [year, setYear] = useState("");
-  const [mileage, setMileage] = useState("");
-  const [askingPrice, setAskingPrice] = useState("");
-  const [cleanOnly, setCleanOnly] = useState(false);
+export function ValuationForm({ onSubmit, loading = false, initial = {} }: { onSubmit: (payload: ValuationRequest) => void; loading?: boolean; initial?: ValuationRequest }) {
+  // A shared link pre-fills the form with the vehicle it describes.
+  const [filters, setFilters] = useState<Filters>(() => ({ brand: initial.brand, series: initial.series, model: initial.model }));
+  const [year, setYear] = useState(initial.year != null ? String(initial.year) : "");
+  const [mileage, setMileage] = useState(initial.mileage_km != null ? String(initial.mileage_km) : "");
+  const [askingPrice, setAskingPrice] = useState(initial.asking_price != null ? String(initial.asking_price) : "");
+  const [cleanOnly, setCleanOnly] = useState(Boolean(initial.clean_only));
   // A blank counterpart used to disable the condition model entirely. Start at
   // zero so entering only one field still compares against an undamaged car.
-  const [changedParts, setChangedParts] = useState("0");
-  const [paintedParts, setPaintedParts] = useState("0");
+  const [changedParts, setChangedParts] = useState(initial.clean_only ? "" : String(initial.changed_parts ?? 0));
+  const [paintedParts, setPaintedParts] = useState(initial.clean_only ? "" : String(initial.painted_parts ?? 0));
 
   const ready = Boolean(filters.brand && filters.series);
   const submit = () => ready && onSubmit({

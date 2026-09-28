@@ -446,6 +446,7 @@ def valuation(repository: ListingRepository, payload: dict[str, Any]) -> dict[st
         "condition_adjustment_percent": adjustment.percent if adjustment else None,
         "condition_adjustment_note": adjustment_note,
         "reference_value": _with_market_ratio(reference, market_value),
+        "comparable_listings": comparable_listings(result["used_listings"]),
     }
 
 
@@ -463,6 +464,14 @@ def _with_market_ratio(reference: dict[str, object] | None, market_value: float)
     if not reference or not reference.get("value"):
         return reference
     return {**reference, "market_to_reference_percent": market_value / float(reference["value"]) * 100}
+
+
+def comparable_listings(used_listings: pd.DataFrame, limit: int = 10) -> list[dict[str, object]]:
+    """The listings this valuation rests on, closest match first, at their real asking price."""
+    if used_listings.empty:
+        return []
+    ordered = used_listings.sort_values("similarity_score", ascending=False) if "similarity_score" in used_listings else used_listings
+    return serialize_listings(ordered, limit=limit)
 
 
 def serialize_listings(frame: pd.DataFrame, limit: int = 12) -> list[dict[str, object]]:

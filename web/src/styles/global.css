@@ -137,3 +137,49 @@ footer { padding: 32px 0; }
   .heading-controls { justify-content: flex-start; }
   .footer-grid { display: grid; gap: 18px; }
 }
+
+.comparable-listings { grid-column: 1 / -1; padding: 22px 24px; background: #fff; border: 1px solid #e3e8ef; border-radius: 12px; }
+.comparable-listings ul { list-style: none; margin: 14px 0 0; padding: 0; }
+.comparable-listings li { display: grid; grid-template-columns: minmax(0, 1fr) auto 28px; gap: 16px; align-items: center; padding: 12px 0; border-top: 1px solid #edf0f4; }
+.comparable-listings li strong { display: block; color: #172033; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.comparable-listings li span { display: block; margin-top: 3px; color: #667085; font-size: 12px; }
+.comparable-price { display: grid; justify-items: end; gap: 2px; }
+.comparable-price b { color: #172033; font-size: 15px; }
+.comparable-price small { color: #667085; font-size: 11px; }
+.comparable-price small.above { color: #9a3412; }
+.comparable-price small.below { color: #16875b; }
+.comparable-listings a { display: grid; place-items: center; width: 28px; height: 28px; color: #2563eb; border-radius: 6px; }
+.comparable-listings a:hover { background: #edf4ff; }
+@media (max-width: 720px) { .comparable-listings { padding: 18px; } .comparable-listings li { grid-template-columns: minmax(0, 1fr) auto; } .comparable-listings li > a, .comparable-link-placeholder { display: none; } }
+
+.sale-report { margin-top: 16px; padding: 22px 24px; background: #fff; border: 1px solid #cbdcf6; border-radius: 12px; }
+.sale-report h3 { margin: 6px 0 4px; color: #123154; font-size: 18px; }
+.sale-report-heading p { margin: 0; color: #526073; font-size: 13px; line-height: 1.5; }
+.sale-report-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; align-items: end; margin-top: 16px; }
+.sale-report small { display: block; margin-top: 12px; color: #667085; font-size: 12px; }
+.sale-report-error { margin: 10px 0 0; color: #b42318; font-size: 13px; }
+.sale-report.sent { display: flex; gap: 12px; align-items: flex-start; border-color: #b7e2cc; background: #f3fbf6; color: #16875b; }
+.sale-report.sent strong { color: #0f6844; }
+.sale-report.sent p { margin: 4px 0 0; color: #526073; font-size: 13px; }
+@media (max-width: 1000px) { .sale-report-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .sale-report { padding: 18px; } .sale-report-grid { grid-template-columns: 1fr 1fr; } .sale-report-grid > label:first-child, .sale-report-grid > button { grid-column: 1 / -1; } }
+
+.secondary-button { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 14px; color: #123154; background: #fff; border: 1px solid #d8e0ea; border-radius: 7px; font-size: 13px; font-weight: 700; }
+.secondary-button:hover { border-color: #2563eb; color: #2563eb; }
+.result-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 24px; }
+.result-actions + .valuation-result { margin-top: 12px; }
+.print-only { display: none; }
+@media print {
+  /* A printed valuation is the result alone, with its disclaimer and demo notice. */
+  .app-header, footer, .hero, .valuation-form, .result-actions, .sale-report, .comparable-listings a { display: none !important; }
+  .print-only { display: grid; gap: 4px; margin: 0 0 16px; padding-bottom: 12px; border-bottom: 1px solid #d8e0ea; }
+  .print-header strong { font-size: 18px; color: #123154; }
+  .print-header span { font-size: 14px; color: #172033; }
+  .print-header small { color: #667085; font-size: 11px; }
+  body, main { background: #fff; }
+  .page-content { padding: 0; }
+  .shell { width: 100%; }
+  .valuation-result { margin-top: 0; }
+  .result-hero, .range-card, .reference-value-card, .comparison-summary, .price-distribution-card, .comparable-listings, .condition-adjustment-card { break-inside: avoid; }
+  .result-hero { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

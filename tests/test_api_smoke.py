@@ -115,7 +115,7 @@ class ApiSmokeTests(unittest.TestCase):
 
     def test_every_route_module_is_reachable(self) -> None:
         """Guards against an import-time break in any one route file."""
-        for path in ("/api/catalog/brands", "/api/market/overview", "/api/listings/similar"):
+        for path in ("/api/catalog/brands", "/api/market/overview", "/api/market/trend"):
             with self.subTest(path=path):
                 self.assertEqual(self.client.get(path).status_code, 200, path)
 
@@ -131,6 +131,14 @@ class ApiSmokeTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("status", response.json())
+
+    def test_valuation_lists_the_listings_it_rests_on(self) -> None:
+        body = self.client.post(
+            "/api/valuation", json={"brand": "Test", "series": "A", "year": 2020, "mileage_km": 80000}
+        ).json()
+
+        self.assertTrue(body["comparable_listings"])
+        self.assertEqual(body["comparable_listings"][0]["brand"], "Test")
 
 
 if __name__ == "__main__":

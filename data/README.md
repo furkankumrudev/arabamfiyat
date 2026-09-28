@@ -13,6 +13,7 @@ data/
     kasko/                    # aylık TSB kasko listeleri
   runtime/
     vehicle_listings.sqlite3  # yerel veritabanı (Git'e dahil değil)
+    sale_reports.sqlite3      # kullanıcıların bildirdiği satış fiyatları (Git'e dahil değil)
 ```
 
 ## Reference Data

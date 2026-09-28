@@ -1,4 +1,4 @@
-import { AlertTriangle, BadgePercent, CalendarRange, Gauge, ShieldCheck, Sparkles } from "lucide-react";
+import { AlertTriangle, BadgePercent, CalendarRange, ExternalLink, Gauge, HandCoins, ListChecks, ShieldCheck, Sparkles } from "lucide-react";
 import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
 import type { ReferenceMileagePoint, ReferencePricePoint, TrendPoint, ValuationResponse } from "../types";
 import { money, number, percent } from "../utils/format";
@@ -36,6 +36,37 @@ function ReferenceValueCard({ data }: { data: ValuationResponse }) {
     <p>{matchText}.{ratio != null && <> İlan piyasası bu değerin <b>%{Math.round(ratio)}</b> seviyesinde.</>}</p>
     <small>{demo ? "Sentetik demo listesinden üretildi. " : ""}Sigorta referans değeridir; ilan veya satış fiyatı değildir.</small>
   </div>;
+}
+
+function SaleReportsCard({ data }: { data: ValuationResponse }) {
+  const reports = data.sale_reports;
+  if (!reports || reports.count === 0) return null;
+  const yearWindow = `±${reports.year_window} model yılı`;
+  return <div className="reference-value-card sale-reports-card">
+    <div><span className="eyebrow"><HandCoins size={14} />KULLANICI SATIŞLARI</span><strong>{reports.median_price != null ? money(reports.median_price) : `${number(reports.count)} bildirim`}</strong></div>
+    <p>{reports.median_price != null
+      ? <>Kullanıcıların bildirdiği {number(reports.count)} gerçek satışın medyanı ({yearWindow}).</>
+      : <>Bu araç için {number(reports.count)} satış bildirildi; gizlilik için medyan en az 3 bildirimde gösterilir.</>}</p>
+    <small>İlan fiyatı değil, kullanıcıların beyan ettiği satış fiyatıdır; doğrulanmamıştır.</small>
+  </div>;
+}
+
+function ComparableListings({ data }: { data: ValuationResponse }) {
+  const items = data.comparable_listings ?? [];
+  if (!items.length) return null;
+  const value = data.estimated_market_value;
+  return <section className="comparable-listings">
+    <div className="comparison-heading"><div><span className="eyebrow"><ListChecks size={14} />DAYANAK İLANLAR</span><h3>Bu değere en yakın ilanlar</h3></div><p>Değerlemeye giren ilanlardan aracınıza en çok benzeyen {number(items.length)} tanesi, gerçek ilan fiyatlarıyla.</p></div>
+    <ul>{items.map((item, index) => {
+      const delta = value ? (item.price - value) / value * 100 : null;
+      const details = [item.year, item.mileage_km != null ? `${number(item.mileage_km)} km` : null, item.city, item.listing_date].filter(Boolean).join(" · ");
+      return <li key={item.id ?? index}>
+        <div><strong>{item.title}</strong><span>{details}</span></div>
+        <div className="comparable-price"><b>{money(item.price)}</b>{delta != null && <small className={Math.abs(delta) < 0.5 ? "" : delta > 0 ? "above" : "below"}>{percent(delta)} tahmine göre</small>}</div>
+        {item.listing_url ? <a href={item.listing_url} target="_blank" rel="noreferrer" aria-label={`${item.title} ilanını aç`}><ExternalLink size={15} /></a> : <span className="comparable-link-placeholder" />}
+      </li>;
+    })}</ul>
+  </section>;
 }
 
 function ComparisonSummary({ data }: { data: ValuationResponse }) {
@@ -179,7 +210,7 @@ function ReferenceInsights({ data }: { data: ValuationResponse }) {
           <LineChart data={mileageData} margin={{ top: 22, right: 18, left: 4, bottom: 8 }}>
             <CartesianGrid vertical={false} stroke="#e7edf5" strokeDasharray="3 4" />
             <XAxis dataKey="label" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={28} />
-            <YAxis tickFormatter={compactPrice} tickLine={false} axisLine={false} width={52} />
+            <YAxis tickFormatter={compactPrice} tickLine={false} axisLine={false} width={76} />
             <Tooltip cursor={{ stroke: "#b9c9df", strokeDasharray: "3 3" }} content={<ReferenceMileageTooltip />} />
             <Line type="monotone" dataKey="median_price" name="Medyan fiyat" stroke="#16875b" strokeWidth={3} dot={{ r: 4, fill: "#fff", strokeWidth: 3 }} activeDot={{ r: 6 }} />
           </LineChart>
@@ -193,7 +224,7 @@ function ReferenceInsights({ data }: { data: ValuationResponse }) {
           <LineChart data={trendData} margin={{ top: 22, right: 18, left: 4, bottom: 8 }}>
             <CartesianGrid vertical={false} stroke="#e7edf5" strokeDasharray="3 4" />
             <XAxis dataKey="label" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={28} />
-            <YAxis tickFormatter={compactPrice} tickLine={false} axisLine={false} width={52} />
+            <YAxis tickFormatter={compactPrice} tickLine={false} axisLine={false} width={76} />
             <Tooltip cursor={{ stroke: "#b9c9df", strokeDasharray: "3 3" }} content={<ReferenceTrendTooltip />} />
             <Line type="monotone" dataKey="median_price" name="Günlük medyan fiyat" stroke="#2563eb" strokeWidth={3} dot={{ r: 4, fill: "#fff", strokeWidth: 3 }} activeDot={{ r: 6 }} />
           </LineChart>
@@ -224,8 +255,10 @@ export function ValuationResult({ data }: { data: ValuationResponse | null }) {
     <MarketRangeCard data={data} />
     <ConditionAdjustmentCard data={data} />
     <ReferenceValueCard data={data} />
+    <SaleReportsCard data={data} />
     <ComparisonSummary data={data} />
     <PriceDistribution data={data} />
+    <ComparableListings data={data} />
     <ReferenceInsights data={data} />
   </section>;
 }

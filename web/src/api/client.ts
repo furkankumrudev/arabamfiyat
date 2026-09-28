@@ -1,5 +1,5 @@
 import type {
-  CatalogResponse, Filters, HealthResponse, MarketOverview, MarketTableResponse, MoversResponse, PriceRelationshipsResponse, TrendResponse,
+  CatalogResponse, Filters, HealthResponse, SaleReportRequest, MarketOverview, MarketTableResponse, MoversResponse, PriceRelationshipsResponse, TrendResponse,
   ValuationRequest, ValuationResponse,
 } from "../types";
 
@@ -48,6 +48,11 @@ export const api = {
   priceRelationships: (filters: Filters) => get<PriceRelationshipsResponse>("/api/market/price-relationships", filters),
   table: (filters: Filters, group_by: string) => get<MarketTableResponse>("/api/market/table", { ...filters, group_by }),
   movers: (direction: "up" | "down") => get<MoversResponse>("/api/market/movers", { direction }),
+  saleReport: async (payload: SaleReportRequest) => {
+    const response = await request(`${API_URL}/api/sale-reports`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    if (!response.ok) throw await failure(response, "Satış bilgisi kaydedilemedi.");
+    return response.json() as Promise<{ status: string; message: string }>;
+  },
   valuation: async (payload: ValuationRequest) => {
     const response = await request(`${API_URL}/api/valuation`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     if (!response.ok) throw await failure(response, "Değerleme oluşturulamadı.");

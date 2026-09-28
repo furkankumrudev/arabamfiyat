@@ -47,3 +47,13 @@ def web_dist_dir() -> Path | None:
         return None
     path = _path_from_environment("WEB_DIST_DIR", PROJECT_ROOT / "web" / "dist")
     return path if (path / "index.html").is_file() else None
+
+
+@lru_cache(maxsize=1)
+def sale_reports_db_path() -> Path:
+    """User-reported sale prices live next to, but never inside, the listing database.
+
+    Writing them into the listing database would change its modification time
+    and force every running API to reload the whole listing table.
+    """
+    return _path_from_environment("SALE_REPORTS_DB_PATH", sqlite_db_path().parent / "sale_reports.sqlite3")
