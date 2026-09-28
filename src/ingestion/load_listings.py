@@ -32,7 +32,8 @@ logger = logging.getLogger(__name__)
 
 # The demo spans several months, so it can carry the weekly history a real
 # deployment would have accumulated; real data never gets backfilled.
-DEMO_SNAPSHOT_WEEKS = 12
+# Fourteen weeks is enough history for the 30 and 90 day change columns.
+DEMO_SNAPSHOT_WEEKS = 14
 
 
 class MixedSourcesError(RuntimeError):

@@ -73,13 +73,19 @@ def grouped_table(repository: ListingRepository, filters: dict[str, Any], group_
     grouped = frame.groupby(column, as_index=False).agg(
         average_price=("price", "mean"), median_price=("price", "median"), listing_count=("price", "count")
     ).sort_values(["listing_count", "median_price"], ascending=[False, False]).head(100)
-    return [
-        {
-            "label": str(row[0]), "average_price": float(row[1]), "median_price": float(row[2]),
-            "listing_count": int(row[3]), "change_30d": None, "change_90d": None, "change_yoy": None,
-        }
-        for row in grouped.itertuples(index=False, name=None)
-    ]
+    # Snapshots summarise each brand over all of its listings, so their changes
+    # only describe a row when no other filter narrows it.
+    active = {key for key, value in filters.items() if value is not None and value != ""}
+    with_changes = column == "brand" and active <= {"brand"}
+    rows = []
+    with closing(repository.connect()) as connection:
+        for label, average, median, count in grouped.itertuples(index=False, name=None):
+            changes = snapshot_changes(connection, "brand", str(label)) if with_changes else unavailable_changes()
+            rows.append({
+                "label": str(label), "average_price": float(average), "median_price": float(median),
+                "listing_count": int(count), **changes,
+            })
+    return rows
 
 
 def build_price_relationships(listings: pd.DataFrame) -> dict[str, list[dict[str, object]]]:

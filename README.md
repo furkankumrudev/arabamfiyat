@@ -99,7 +99,7 @@ scripts\load_demo_data.bat
 ./scripts/load_demo_data.sh
 ```
 
-Komut 6.000 sentetik ilan üretir, temizleme hattından geçirir ve 12 haftalık piyasa özeti oluşturur. Arayüz bu durumda üstte **"Demo verisi"** uyarısı gösterir; sentetik fiyatlar hiçbir yerde gerçek piyasa gibi sunulmaz. `scripts\start_local.bat` ve Docker akışı, veritabanı yoksa bunu kendiliğinden yapar.
+Komut 6.000 sentetik ilan üretir, temizleme hattından geçirir ve 14 haftalık piyasa özeti oluşturur. Arayüz bu durumda üstte **"Demo verisi"** uyarısı gösterir; sentetik fiyatlar hiçbir yerde gerçek piyasa gibi sunulmaz. `scripts\start_local.bat` ve Docker akışı, veritabanı yoksa bunu kendiliğinden yapar.
 
 ### Docker ile demo (önerilen)
 

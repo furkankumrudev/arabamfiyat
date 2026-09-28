@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.analysis.market_engine import build_market_analysis
-from src.api.database import DatabaseUnavailable, ListingRepository
+from src.api.database import DatabaseUnavailable, ListingRepository, ensure_snapshot_table
 from src.api.dependencies import MarketFilters
 from src.api.routes.market import get_movers, get_overview, get_trend
 from src.api.routes.valuation import create_valuation
@@ -22,6 +22,7 @@ from src.api.services.market_service import (
     build_reference_mileage_points,
     build_reference_price_points,
     enrich_condition_payload,
+    grouped_table,
 )
 from src.api.services.trend_service import build_listing_trend
 from src.maintenance.save_market_snapshot import save_snapshot
@@ -127,6 +128,35 @@ class ApiServiceTests(unittest.TestCase):
         self.assertEqual(_snapshot_scope({"brand": "Test"}), ("brand", "Test"))
         self.assertIsNone(_snapshot_scope({"brand": "Test", "year_min": 2020}))
 
+    def _brand_snapshot(self, day: str, median: float) -> None:
+        with closing(self.repository.connect()) as connection:
+            ensure_snapshot_table(connection)
+            connection.execute(
+                """INSERT INTO market_price_snapshots (snapshot_date, dimension_type, dimension_value, dimension_key,
+                    brand, average_price, median_price, listing_count) VALUES (?, 'brand', 'Test', 'brand:test', 'Test', ?, ?, 10)""",
+                (day, median, median),
+            )
+            connection.commit()
+
+    def test_brand_table_reports_snapshot_changes(self) -> None:
+        self._brand_snapshot("2026-06-01", 800000)
+        self._brand_snapshot("2026-07-01", 880000)
+
+        row = grouped_table(self.repository, {}, "brand")[0]
+
+        self.assertEqual(row["label"], "Test")
+        self.assertAlmostEqual(row["change_30d"], 10.0)
+        self.assertIsNone(row["change_90d"])
+
+    def test_brand_table_hides_changes_that_do_not_match_the_filters(self) -> None:
+        self._brand_snapshot("2026-06-01", 800000)
+        self._brand_snapshot("2026-07-01", 880000)
+
+        filtered = grouped_table(self.repository, {"year_min": 2021}, "brand")[0]
+        by_fuel = grouped_table(self.repository, {}, "fuel_type")[0]
+
+        self.assertIsNone(filtered["change_30d"])
+        self.assertIsNone(by_fuel["change_30d"])
 
     def test_price_relationships_use_real_years_and_mileage_bands(self) -> None:
         frame = pd.DataFrame({
